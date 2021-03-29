@@ -1,5 +1,6 @@
 // JavaFX
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.event.*;
 import javafx.scene.*;
 import javafx.scene.text.*;
@@ -71,6 +72,8 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    
    // Multiplayer
    private int playerNumber;
+   private ArrayList<Opponent> opponents = new ArrayList<Opponent>();
+   private ArrayList<Player> opponentPlayers = new ArrayList<Player>();
    
    /** Boolean that determines the input from the keyboard*/
    private boolean gas, brake, turnLeft, turnRight;
@@ -90,6 +93,9 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       stage.setTitle("Artem Polkovnikov - Java Racer Online");
       
       
+      // Create the main player
+      // PlayerNumber, NameOfCarFile, StartPosX, StartPosY, StartRotation(degrees)      
+      mainPlayer = new Player(this.stage, 1, carFileArray[carArrayIndex], 130, 320, 180, TRACK_WIDTH, TRACK_HEIGHT);
       
       // SET SCENES
       titleScreenScene = TitleScreen.getScene(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfServerIp, btnStart);
@@ -111,12 +117,6 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       
       // Image initialization
       initImages();
-      
-      // Create players
-      // PlayerNumber, NameOfCarFile, StartPosX, StartPosY, StartRotation(degrees)      
-      double y = 320;
-      
-      mainPlayer = new Player(this.stage, 1, carFileArray[carArrayIndex], 130, (y), 180, TRACK_WIDTH, TRACK_HEIGHT);
       
       // Track stack pane
       track.getChildren().add(imgViewTrack);
@@ -275,12 +275,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    
    class Client extends Thread
    {
-      /*
-      createGameScene();
-      stage.setScene(gameScene);
-      track.requestFocus();
-      stage.show();
-      */
+      // Attributes
+      Player tempMainPlayer = null;
+      
+      public Client()
+      {
+         tempMainPlayer = mainPlayer;
+      }
       
       public void run()
       {
@@ -293,10 +294,27 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             oos = new ObjectOutputStream(socket.getOutputStream());
             ois = new ObjectInputStream(socket.getInputStream());
             
-            // Try player initialization
+            // Player initialization
+               // Init request
             oos.writeObject("INIT_PLAYER");
-            playerNumber = (Integer)ois.readObject();
+               // RECEIVE player number
+            Object obj = ois.readObject();
+            if(obj instanceof Integer)
+            {
+               playerNumber = (Integer)obj;
+            }
+            else
+            {
+               System.out.println((String)obj);
+            }
             //DisplayMessage.showAlert(stage, AlertType.INFORMATION, "CONNECTED TO THE SERVER", "YAY  " + playerNumber);
+               // SEND car file name
+            oos.writeObject(tempMainPlayer.getCarFileName());
+               // RECEIVE starting coordintaes
+            double x = (double)ois.readObject();
+            double y = (double)ois.readObject();
+            double degree = (double)ois.readObject();
+            tempMainPlayer.setStartingPosition(x, y, degree);
          }
          catch(ClassNotFoundException cnfe)
          {
@@ -311,6 +329,80 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          {
             DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", ioe + "");
             btnStart.setDisable(false);
+         }
+         
+         // Start listening to server inputs
+         while(true)
+         {
+            Object input = null;
+            
+            // Wait for a command
+            try
+            {
+               input = ois.readObject();
+            }
+            catch(ClassNotFoundException cnfe)
+            {
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", cnfe + "");
+            }
+            catch(IOException ioe)
+            {
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", ioe + "");
+            }
+            
+            if(input instanceof String)
+            {
+               String command = (String)input;
+               
+               switch(command)
+               {
+                  case "INIT_OPPONENT":
+                     try
+                     {
+                        Opponent op = (Opponent)ois.readObject();
+                        opponents.add(op);
+                        DisplayMessage.showAlert(stage, AlertType.INFORMATION, "ClienThread: Opponent Info received", op + "");
+                     }
+                     catch(ClassNotFoundException cnfe)
+                     {
+                        DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", cnfe + "");
+                     }
+                     catch(IOException ioe)
+                     {
+                        DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", ioe + "");
+                     }
+                     break;
+                  case "START_GAME":
+                     // Create opponents as players
+                     for(Opponent op:opponents)
+                     {
+                        // this.stage, 1, carFileArray[carArrayIndex], 130, (y), 180, TRACK_WIDTH, TRACK_HEIGHT
+                        Player plOp = new Player(stage, op.getClientNumber(), op.getCarFileName(), op.getStartX(), op.getStartY(), op.getStartDegree(), TRACK_WIDTH, TRACK_HEIGHT);
+                        opponentPlayers.add(op.getClientNumber(), plOp);
+                     }
+                     
+                     for(Player p:opponentPlayers)
+                     {
+                        track.getChildren().add(p);
+                     }
+                     // Show the game scene
+                     createGameScene();
+                     Platform.runLater
+                     (
+                        new Runnable()
+                        {
+                           public void run()
+                           {
+                              stage.setScene(gameScene);
+                              track.requestFocus();
+                              stage.show();
+                           }
+                        }
+                     );
+                     break;
+               }
+               
+            }
          }
       }
    }

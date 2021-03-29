@@ -35,6 +35,7 @@ public class Player extends Pane
    private double trackBorderX;
    private double trackBorderY;
       // Car Image
+   private String carFileName;
    private Image carImage = null;
    private ImageView carImageView = null;
       // Car Dimensions
@@ -78,6 +79,7 @@ public class Player extends Pane
       this.playerName = "Player" + _playerNumber;
       this.trackBorderX = _trackWidth;
       this.trackBorderY = _trackHeight;
+      this.carFileName = _carImageName;
       
       try
       {
@@ -132,6 +134,17 @@ public class Player extends Pane
    
    /** Returns the steering angle value*/
    public double getSteerAngle() {return this.currentSteeringAngle;}
+   /** Returns the name of the car image file*/
+   public String getCarFileName() {return this.carFileName;}
+   
+   public void setStartingPosition(double _x, double _y, double _degree)
+   {
+      carImageView.setTranslateX(_x);
+      carImageView.setTranslateY(_y);
+      carImageView.setRotate(_degree);
+      carCenterLocation = new Position(_x, _y);
+      wheelBase = new Position(_x, _y);
+   }
    
    
    /**

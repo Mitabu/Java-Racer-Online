@@ -61,6 +61,10 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
    private int numOfPlayers;
    private int numOfLaps;
    
+   private double[] startX = {130, 180, 130, 180};
+   private double[] startY = {320, 250, 180, 110};
+   private double startDegree = 180;
+   
    // Networking
       // Port
    private static final int SERVER_PORT = 42069;
@@ -68,8 +72,17 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
    private ServerSocket serverSocket = null;
    
       /** ArrayList of client sockets*/
-   private ArrayList<Client> clients = new ArrayList<Client>();
+   private ArrayList<Client> clients = new ArrayList<Client>(Arrays.asList(new Client[]{
+                new Client(),
+                new Client(),
+                new Client(),
+                new Client()
+                }));
+   private ArrayList<ClientThread> clientThreads = new ArrayList<ClientThread>();
+   
+   // Synchronization
    private Object clientsLock = new Object();
+   private Object playerInitLock = new Object();
    
    /** Sets up the stage and GUI*/
    public void start(Stage _stage)
@@ -201,6 +214,10 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                Socket cSocket = serverSocket.accept();
                // Create client
                ClientThread ct = new ClientThread(cSocket, numOfPlayers);
+               synchronized(clientsLock)
+               {
+                  clientThreads.add(ct);
+               }
                // Start the client thread
                ct.start();
             }
@@ -212,6 +229,15 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             // Subtract availiable player spaces
             numOfPlayers--;
          }
+         // AFTER EVERYONE JOINED
+         
+         // Send each client information about all other clients
+         for(ClientThread ct:clientThreads)
+         {
+            ct.sendOpponentInformation();
+            System.out.println("Oponent info sent");
+         }
+         
          // Start the game
          taLog.appendText("\nGame room is full\nStarting the game...\n");
          
@@ -222,7 +248,29 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
    
    class ServerThread extends Thread
    {
-      
+      public void run()
+      {
+         // SEND game start message
+         for(ClientThread ct:clientThreads)
+         {
+            if(ct.getInitializedStatus())
+            {
+               ct.sendObject(ct.getOos(), "START_GAME");
+            }
+            else
+            {
+               try
+               {
+                  Thread.sleep(1000);
+               }
+               catch(InterruptedException ie)
+               {
+                  System.out.println(ie);
+               }
+               ct.sendObject(ct.getOos(), "START_GAME");
+            }
+         }
+      }
    }
    
    class ClientThread extends Thread
@@ -234,6 +282,11 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          // Client Server Communication
       private ObjectOutputStream oos = null;
       private ObjectInputStream ois = null;
+      
+      private boolean initialized = false;
+      
+      public boolean getInitializedStatus() {return initialized;}
+      public ObjectOutputStream getOos() {return this.oos;}
       
       public ClientThread(Socket _cSocket, int _clientNumber)
       {
@@ -285,24 +338,36 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                switch(command)
                {
                   case "INIT_PLAYER":
-                     // Send client num
-                     Integer clientNum = this.clientNumber;
-                     sendObject(this.oos, clientNum);
-                     
-                     String carFileName = null;
-                     try
+                     synchronized(playerInitLock)
                      {
-                        carFileName = (String)ois.readObject();
-                     }
-                     catch(ClassNotFoundException cnfe)
-                     {
-                        DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", cnfe + "");
-                     }
-                     catch(IOException ioe)
-                     {
-                        DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", ioe + "");
-                     }
-                     
+                        // SEND client number
+                        Integer clientNum = this.clientNumber;
+                        sendObject(this.oos, clientNum);
+                        
+                        // RECEIVE and record car file name
+                        String carFileName = null;
+                        try
+                        {
+                           carFileName = (String)ois.readObject();
+                           clients.get(clientNumber).setCarFileName(carFileName);
+                           // SEND starting position
+                           oos.writeObject(startX[clientNumber - 1]);
+                           clients.get(clientNumber).setStartX(startX[clientNumber - 1]);
+                           oos.writeObject(startY[clientNumber - 1]);
+                           clients.get(clientNumber).setStartY(startY[clientNumber - 1]);
+                           oos.writeObject(startDegree);
+                           clients.get(clientNumber).setStartDegree(startDegree);
+                        }
+                        catch(ClassNotFoundException cnfe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", cnfe + "");
+                        }
+                        catch(IOException ioe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", ioe + "");
+                        }
+                        initialized = true;
+                     }             
                      break;
                   default:
                      taLog.appendText("ClientThread: An unknown command received.\n");
@@ -310,14 +375,53 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                }
             }
          }
+      }// run()
+      
+      public void sendOpponentInformation()
+      {
+         SendOpponentInformation soi = new SendOpponentInformation();
+         soi.start();
+         
+         try
+         {
+            soi.join();
+         }
+         catch(InterruptedException ie)
+         {
+            DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error sending opponent information", ie + "");
+         }
       }
-   }
-   
-   private void sendObject(ObjectOutputStream _oos, Object _object)
-   {
-      ClientOutput co = new ClientOutput(_oos, _object);
-      co.start();
-   }
+      
+      class SendOpponentInformation extends Thread
+      {
+         public void run()
+         {
+            // Send all of the opponents
+            for(Client c:clients)
+            {
+               if(c.getClientNumber() != clientNumber && c.getClientNumber() != 0)
+               {
+                  try
+                  {
+                     oos.writeObject("INIT_OPPONENT");
+                     Opponent op = new Opponent(c.getClientNumber(), c.getCarFileName(), c.getStartX(), c.getStartY(), c.getStartDegree());
+                     oos.writeObject(op);
+                  }
+                  catch(IOException ioe)
+                  {
+                     DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", ioe + "");
+                  }
+               }
+            }
+         }
+      } // SendOpponentInformation
+      
+      public void sendObject(ObjectOutputStream _oos, Object _object)
+      {
+         ClientOutput co = new ClientOutput(_oos, _object);
+         co.start();
+      }
+   } // ClientThread
    
    class ClientOutput extends Thread
    {
@@ -336,6 +440,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          try
          {
             oos.writeObject(objectToSend);
+            oos.flush();
          }
          catch(IOException ioe)
          {
