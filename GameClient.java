@@ -15,6 +15,7 @@ import javafx.scene.input.KeyEvent;// Key Listener
 // Java
 import java.io.*;
 import java.util.*;
+import java.net.*;
 
 /**
 *  @author Artem Polkovnikov
@@ -39,6 +40,8 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       // SCENES
             // Title Screen
    private Scene titleScreenScene;
+   private TextField tfServerIp = new TextField();
+   private Button btnStart = new Button("Start");
             // Options
    private Scene optionsScene;
    private Options optionsObject;
@@ -59,22 +62,21 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    private static final String TRACK_FILE_NAME = "track.png";
    private String carFileName = "car_blue.png";
    
+   // Networking
+   private static final int SERVER_PORT = 42069;
+   private Socket socket = null;
+   
+   private ObjectOutputStream oos = null;
+   private ObjectInputStream ois = null;
+   
+   // Multiplayer
+   private int playerNumber;
+   
    /** Boolean that determines the input from the keyboard*/
    private boolean gas, brake, turnLeft, turnRight;
    
-   // Race
-      //
-      //
-      //
-      // CHANGE IF YOU WANT TO SEE MORE CARS ON THE SCREEN
-      //              (Will be removed later)
-      //                         :D
-      //
-      //
-   private int numberOfPlayers = 1;
-   
-   /** ArrayList of player objects*/
-   private ArrayList<Player> players = new ArrayList<Player>();
+   /** Main player*/
+   private Player mainPlayer = null;
    
    /** Array of car file names*/
    private String[] carFileArray = {"car_blue.png", "car_orange.png", "car_purple.png", "car_red.png"};
@@ -90,7 +92,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       
       
       // SET SCENES
-      titleScreenScene = TitleScreen.getScene(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT);
+      titleScreenScene = TitleScreen.getScene(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfServerIp, btnStart);
       optionsObject = new Options(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfColorSelect, carNameArray[carArrayIndex]);
       optionsScene = optionsObject.getScene();
       
@@ -114,21 +116,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       // PlayerNumber, NameOfCarFile, StartPosX, StartPosY, StartRotation(degrees)      
       double y = 320;
       
-      for(int i = 0; i < numberOfPlayers; i++)
-      {
-         y += 80;
-         
-         Player p = new Player(this.stage, (i+1), carFileArray[carArrayIndex], 130, (y), 180, TRACK_WIDTH, TRACK_HEIGHT);
-         players.add(p);
-      }
+      mainPlayer = new Player(this.stage, 1, carFileArray[carArrayIndex], 130, (y), 180, TRACK_WIDTH, TRACK_HEIGHT);
       
       // Track stack pane
       track.getChildren().add(imgViewTrack);
       
-      for(Player p:players)
-      {
-         track.getChildren().add(p);
-      }
+      track.getChildren().add(mainPlayer);
+      
       // Root
       TextArea taLog = new TextArea();
       taLog.setPrefColumnCount(5);
@@ -198,10 +192,8 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                
                // Pass user commands to the Player
                //System.out.println("Turn: " + turn + " Velocity: " + velocity);
-               for(Player p:players) // This is here for test purposes only
-               {
-                  p.update(turn, velocity);
-               }
+               
+               mainPlayer.update(turn, velocity);
             }
          };
       timer.start();
@@ -219,10 +211,16 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          switch(command)
          {
             case "Start":
-               createGameScene();
-               stage.setScene(gameScene);
-               track.requestFocus();
-               stage.show();
+               if(tfServerIp.getText().length() > 1)
+               {
+                  Client c = new Client();
+                  c.start();
+                  btnStart.setDisable(true);
+               }
+               else
+               {
+                  DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting the game", "Server IP field is empty. Please, enter a Server IP.");
+               }
                break;
             case "Options":
                stage.setScene(optionsScene);
@@ -273,5 +271,47 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       // Image fit
       imgViewTrack.setFitWidth(TRACK_WIDTH);
       imgViewTrack.setFitHeight(TRACK_HEIGHT);
-   } 
+   }
+   
+   class Client extends Thread
+   {
+      /*
+      createGameScene();
+      stage.setScene(gameScene);
+      track.requestFocus();
+      stage.show();
+      */
+      
+      public void run()
+      {
+         try
+         {
+            // Open socket for server connection
+            socket = new Socket(tfServerIp.getText(), SERVER_PORT);
+            
+            // Open input from server																
+            oos = new ObjectOutputStream(socket.getOutputStream());
+            ois = new ObjectInputStream(socket.getInputStream());
+            
+            // Try player initialization
+            oos.writeObject("INIT_PLAYER");
+            playerNumber = (Integer)ois.readObject();
+            //DisplayMessage.showAlert(stage, AlertType.INFORMATION, "CONNECTED TO THE SERVER", "YAY  " + playerNumber);
+         }
+         catch(ClassNotFoundException cnfe)
+         {
+            DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", cnfe + "");
+         }
+         catch(UnknownHostException uhe)
+         {
+            DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", uhe + "");
+            btnStart.setDisable(false);
+         }
+         catch(IOException ioe)
+         {
+            DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", ioe + "");
+            btnStart.setDisable(false);
+         }
+      }
+   }
 }

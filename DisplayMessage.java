@@ -2,6 +2,7 @@ import javafx.stage.*;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.*;
 import javafx.scene.control.ButtonType;
+import javafx.application.Platform;
 import java.util.Optional;
 
 /**
@@ -21,12 +22,21 @@ public class DisplayMessage
    */
    public static void showAlert(Stage _owner, AlertType _at, String _ht, String _ct)
    {
-      Alert alert = new Alert(_at);
-      alert.setHeaderText(_ht);
-      alert.setContentText(_ct);
-      alert.initOwner(_owner);
-      
-      alert.showAndWait();
+      Platform.runLater
+      (
+         new Runnable()
+         {
+            public void run()
+            {
+               Alert alert = new Alert(_at);
+               alert.setHeaderText(_ht);
+               alert.setContentText(_ct);
+               alert.initOwner(_owner);
+               
+               alert.showAndWait();
+            }
+         }
+      );
    }
    
    /**
