@@ -97,6 +97,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    {
       stage = _stage;
       stage.setTitle("Artem Polkovnikov - Java Racer Online");
+      stage.setOnCloseRequest(
+      new EventHandler<WindowEvent>() {
+         public void handle(WindowEvent evt)
+         {
+            System.exit(0);
+         }
+      });
       
       // TRACK
       track = new StackPane(); 
@@ -278,10 +285,10 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    
    public void sendCoordinatesToServer(double x, double y, double degree)
    {
+      CoordinateSet cs = new CoordinateSet(playerNumber, x, y, degree);
       // Request
       try
       {
-         CoordinateSet cs = new CoordinateSet(playerNumber, x, y, degree);
          oos.writeObject("UPDATE_COORDINATES");
          oos.writeObject(cs);
       }
@@ -320,6 +327,11 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", uhe + "");
             btnStart.setDisable(false);
          }
+         catch(ConnectException ce)
+         {
+            DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", ce + "");
+            btnStart.setDisable(false);
+         }
          catch(IOException ioe)
          {
             DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", ioe + "");
@@ -335,6 +347,11 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             try
             {
                input = ois.readObject();
+            }
+            catch(ConnectException ce)
+            {
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", ce + "");
+               btnStart.setDisable(false);
             }
             catch(ClassNotFoundException cnfe)
             {
@@ -456,6 +473,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                            if(p.getPlayerNumber() == cs.getClientNumber() && cs != null)
                            {
                               p.setCoordinates(cs.getX(), cs.getY(), cs.getDegree());
+                              System.out.println(String.format("UC: X:%f  Y:%f  DEG:%f", cs.getX(), cs.getY(), cs.getDegree()));
                            }
                         }
                      }

@@ -81,6 +81,13 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
    {
       stage = _stage;
       stage.setTitle("Artem Polkovnikov - JRO Server");
+      stage.setOnCloseRequest(
+      new EventHandler<WindowEvent>() {
+         public void handle(WindowEvent evt)
+         {
+            System.exit(0);
+         }
+      });
       
       // Top line
          tfServerIp.setPrefColumnCount(10);
@@ -185,6 +192,10 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          
          ServerThread st = new ServerThread(serverSocket);
          st.start();
+      }
+      catch(SocketException se)
+      {
+         DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting server", se + "");
       }
       catch(IOException ioe)
       {
@@ -317,6 +328,10 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             try
             {
                input = ois.readObject();
+            }
+            catch(SocketException se)
+            {
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", se + "");
             }
             catch(ClassNotFoundException cnfe)
             {
