@@ -1,5 +1,6 @@
 // JavaFX
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.event.*;
 import javafx.scene.*;
 import javafx.scene.text.*;
@@ -152,9 +153,18 @@ public class Player extends Pane
    
    public void setCoordinates(double _x, double _y, double _degree)
    {
-      carImageView.setTranslateX(_x);
-      carImageView.setTranslateY(_y);
-      carImageView.setRotate(_degree);
+      Platform.runLater
+      (
+         new Runnable()
+         {
+            public void run()
+            {
+               carImageView.setTranslateX(_x);
+               carImageView.setTranslateY(_y);
+               carImageView.setRotate(_degree);
+            }
+         }
+      );
    }
 //    public void setStartingPosition(double _x, double _y, double _degree)
 //    {

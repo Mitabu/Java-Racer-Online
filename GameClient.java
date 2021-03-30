@@ -473,7 +473,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                            if(p.getPlayerNumber() == cs.getClientNumber() && cs != null)
                            {
                               p.setCoordinates(cs.getX(), cs.getY(), cs.getDegree());
-                              System.out.println(String.format("UC: X:%f  Y:%f  DEG:%f", cs.getX(), cs.getY(), cs.getDegree()));
+                              //System.out.println(String.format("UC: X:%f  Y:%f  DEG:%f", cs.getX(), cs.getY(), cs.getDegree()));
                            }
                         }
                      }
