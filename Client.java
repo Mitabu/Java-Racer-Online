@@ -24,7 +24,7 @@ public class Client
       this.cSocket = _cSocket;
       this.oos = _oos;
       this.ois = _ois;
-      this.clientNumber = clientNumber;
+      this.clientNumber = _clientNumber;
    }
    
    public Socket getClientSocket() {return this.cSocket;}
@@ -40,4 +40,9 @@ public class Client
    public void setStartX(double _startX) {this.startX = _startX;}
    public void setStartY(double _startY) {this.startY = _startY;}
    public void setStartDegree(double _startDegree) {this.startDegree = _startDegree;}
+
+   public String toString()
+   {
+      return String.format("Client%d, carFileName: %s", this.clientNumber, this.carFileName);
+   }
 }

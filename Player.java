@@ -29,6 +29,7 @@ public class Player extends Pane
    
    // Player
    private String playerName;
+   private int playerNumber;
    
    // Car
       // Track border
@@ -76,6 +77,7 @@ public class Player extends Pane
    */
    public Player(Stage _ownerStage, int _playerNumber, String _carImageName, double _startX, double _startY, double _startRotation, double _trackWidth, double _trackHeight)
    {
+      this.playerNumber = _playerNumber;
       this.playerName = "Player" + _playerNumber;
       this.trackBorderX = _trackWidth;
       this.trackBorderY = _trackHeight;
@@ -115,7 +117,7 @@ public class Player extends Pane
       
       carImageView.setTranslateX(startX);
       carImageView.setTranslateY(startY);
-      centerCircle = new Circle(40/2, 70/2, 5);
+      //centerCircle = new Circle(40/2, 70/2, 5);
       //System.out.println("CarStartX: " + startX + " CarStartY: " + startY);
       
       // Record initial position of the car as a Position
@@ -137,14 +139,24 @@ public class Player extends Pane
    /** Returns the name of the car image file*/
    public String getCarFileName() {return this.carFileName;}
    
-   public void setStartingPosition(double _x, double _y, double _degree)
+   public String getCoordinates()
    {
-      carImageView.setTranslateX(_x);
-      carImageView.setTranslateY(_y);
-      carImageView.setRotate(_degree);
-      carCenterLocation = new Position(_x, _y);
-      wheelBase = new Position(_x, _y);
+      return String.format("Player%d   iX: %f   iY:%f", playerNumber, carImageView.getX(), carImageView.getY());
    }
+//    public void setStartingPosition(double _x, double _y, double _degree)
+//    {
+//       // Set car centering values
+//       carCenterX = carWidth / 2;
+//       carCenterY = carHeight / 2;      
+//       
+//       double x = _x - carCenterX;
+//       double y = _y - carCenterY;
+//       carImageView.setTranslateX(x);
+//       carImageView.setTranslateY(y);
+//       carImageView.setRotate(_degree);
+//       carCenterLocation = new Position(_x, _y);
+//       wheelBase = new Position(_x, _y);
+//    }
    
    
    /**
@@ -409,10 +421,10 @@ public class Player extends Pane
       //CHECK
       //System.out.println(carCenterLocation + "\n" + carBody);
       
-      carImageView.setTranslateX(carCenterLocation.getX() - carWidth);
-      carImageView.setTranslateY(carCenterLocation.getY() - carHeight);
-      centerCircle.setTranslateX(carCenterLocation.getX() - carWidth);
-      centerCircle.setTranslateY(carCenterLocation.getY() - carHeight);
+      carImageView.setTranslateX(carCenterLocation.getX() - (carWidth / 2));
+      carImageView.setTranslateY(carCenterLocation.getY() - (carHeight / 2));
+      //centerCircle.setTranslateX(carCenterLocation.getX() - carWidth);
+      //centerCircle.setTranslateY(carCenterLocation.getY() - carHeight);
       
       //
       // CAR POSITION CALCULATED
@@ -441,4 +453,9 @@ public class Player extends Pane
       //System.out.println(newCarHeading);
       
    } // END calculateSteering()
+   
+   public String toString()
+   {
+      return String.format("Player: %s.   Car File Name: %s",this.playerName, this.carFileName);
+   }
 } // END Player

@@ -14,7 +14,7 @@ public class Opponent implements Serializable
    
    public Opponent(int _clientNumber, String _carFileName, double _sx, double _sy, double _sd)
    {
-      this.clientNumber = clientNumber;
+      this.clientNumber = _clientNumber;
       this.carFileName = _carFileName;
       this.startX = _sx;
       this.startY = _sy;
