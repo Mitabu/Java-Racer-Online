@@ -188,6 +188,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             @Override
             public void handle(long now)
             {
+<<<<<<< Updated upstream
                // Get the turning value
                int turn = 0;
                
@@ -204,6 +205,28 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                //System.out.println("Turn: " + turn + " Velocity: " + velocity);
                
                mainPlayer.update(turn, velocity);
+=======
+               if (now - lastUpdate >= 3_000_000) // Force update every 6.9 MS
+               {
+                  // Get the turning value
+                  int turn = 0;
+                  
+                  if(turnRight) { turn += 1; }
+                  if(turnLeft) { turn -= 1; }
+                  
+                  // Get the acceleration value
+                  double velocity = 0.0;
+                  
+                  if(gas) { velocity += 0.5; }
+                  if(brake) { velocity -= 1.0; }
+                  
+                  // Pass user commands to the Player
+                  //System.out.println("Turn: " + turn + " Velocity: " + velocity);
+                  
+                  mainPlayer.update(turn, velocity);
+                  lastUpdate = now;
+               }
+>>>>>>> Stashed changes
             }
          };
       timer.start();
