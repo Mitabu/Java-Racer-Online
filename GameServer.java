@@ -247,14 +247,14 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          }
          taLog.appendText("\nPlayers initialized...");
          
-         System.out.println("\nClient list after initialization of players\n");
-         for(Client c:clients)
-         {
-            System.out.println(c);
-         }
-         System.out.println("\n");
+//          System.out.println("\nClient list after initialization of players\n");
+//          for(Client c:clients)
+//          {
+//             System.out.println(c);
+//          }
+//          System.out.println("\n");
          
-         System.out.println("\nOpponent initialization\n");
+//         System.out.println("\nOpponent initialization\n");
          
          // Initialize Opponents
          for(ClientThread cThread:clientThreads)
@@ -262,7 +262,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             cThread.initializeOpponents();
          }
          taLog.appendText("\nOpponents initialized...");
-         System.out.println("\n");
+//         System.out.println("\n");
          
          // Start client threads for listening
          for(ClientThread cThread:clientThreads)
@@ -432,7 +432,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                                              c.getStartX(),
                                              c.getStartY(),
                                              c.getStartDegree());
-                  System.out.println("Client" + this.clientNumber + " INIT_OPPONENT: " + c);
+                  //System.out.println("Client" + this.clientNumber + " INIT_OPPONENT: " + c);
                   oos.writeObject(op);
                }
             }

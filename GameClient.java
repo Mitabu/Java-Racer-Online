@@ -388,7 +388,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         mainStartX = (double)ois.readObject();
                         mainStartY = (double)ois.readObject();
                         mainStartDegree = (double)ois.readObject();
-                        System.out.println("sX: " + mainStartX + "   sY: " + mainStartY);
+                        //System.out.println("sX: " + mainStartX + "   sY: " + mainStartY);
                      }
                      catch(ClassNotFoundException cnfe)
                      {
@@ -405,7 +405,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         Opponent op = (Opponent)ois.readObject();
                         opponents.add(op);
                         //DisplayMessage.showAlert(stage, AlertType.INFORMATION, "INIT_OPPONENT: Opponent Info received", op + "");
-                        System.out.println("Player" + playerNumber + " INIT_OPPONENT: " + op);
+                        //System.out.println("Player" + playerNumber + " INIT_OPPONENT: " + op);
                      }
                      catch(ClassNotFoundException cnfe)
                      {
@@ -417,13 +417,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      }
                      break; // INIT_OPPONENT
                   case "START_GAME":
-                     System.out.println("\nSTART_GAME RECEIVED\n");
+                     //System.out.println("\nSTART_GAME RECEIVED\n");
                      
                      // Create the main player
                      // PlayerNumber, NameOfCarFile, StartPosX, StartPosY, StartRotation(degrees)      
                      mainPlayer = new Player(gameClient, stage, playerNumber, carFileArray[carArrayIndex], mainStartX, mainStartY, mainStartDegree, TRACK_WIDTH, TRACK_HEIGHT);
                      //mainPlayer = new Player(this.stage, playerNumber, carFileArray[carArrayIndex], 0, 0, mainStartDegree, TRACK_WIDTH, TRACK_HEIGHT);
-                     System.out.println("sX: " + mainStartX + "   sY: " + mainStartY);
+                     //System.out.println("sX: " + mainStartX + "   sY: " + mainStartY);
 
                      createGameScene();
                      // Create opponents as players
@@ -432,17 +432,17 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         Player plOp = new Player(gameClient, stage, op.getClientNumber(), op.getCarFileName(), op.getStartX(), op.getStartY(), op.getStartDegree(), TRACK_WIDTH, TRACK_HEIGHT);
                         //Player plOp = new Player(stage, op.getClientNumber(), op.getCarFileName(), 0, 0, op.getStartDegree(), TRACK_WIDTH, TRACK_HEIGHT);
                         opponentPlayers.add(plOp);
-                        System.out.println(op);
+                        //System.out.println(op);
                      }
                      
                      for(Player p:opponentPlayers)
                      {
                         track.getChildren().add(p);
                         //System.out.println(p);
-                        System.out.println(p.getCoordinates());
+                        //System.out.println(p.getCoordinates());
                      }
                      track.getChildren().add(mainPlayer);
-                     System.out.println(mainPlayer.getCoordinates());
+                     //System.out.println(mainPlayer.getCoordinates());
                      
                      // Show the game scene
                      Platform.runLater
