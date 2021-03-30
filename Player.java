@@ -401,6 +401,7 @@ public class Player extends Pane
       centerCircle.setTranslateX(carCenterLocation.getX() - carWidth);
       centerCircle.setTranslateY(carCenterLocation.getY() - carHeight);
       
+=======
       //
       // CAR POSITION CALCULATED
       //
@@ -421,7 +422,23 @@ public class Player extends Pane
       
       double newCarHeading = Math.toDegrees(  Math.atan2(fy - by, fx - bx)  ) + 90;
       this.carHeadingDegree = newCarHeading;
-      carImageView.setRotate(this.carHeadingDegree);
+      
+      Platform.runLater
+      (
+         new Runnable()
+         {
+            public void run()
+            {
+               carImageView.setTranslateX(carCenterLocation.getX() - (carWidth / 2));
+               carImageView.setTranslateY(carCenterLocation.getY() - (carHeight / 2));
+               //centerCircle.setTranslateX(carCenterLocation.getX() - carWidth);
+               //centerCircle.setTranslateY(carCenterLocation.getY() - carHeight);
+               carImageView.setRotate(carHeadingDegree);
+            }
+         }
+      );
+      
+      
       //CHECK
       //String coordinates = String.format("Front wheel - X: %.2f Y: %.2f    Back wheel - X: %.2f Y: %.2f", frontWheelVector.getX(), frontWheelVector.getY(), backWheelVector.getX(), backWheelVector.getY());
       //System.out.println(coordinates);

@@ -59,6 +59,28 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    private static final String TRACK_FILE_NAME = "track.png";
    private String carFileName = "car_blue.png";
    
+=======
+   // Networking
+   private static final int SERVER_PORT = 42069;
+   private Socket socket = null;
+   
+   private ObjectOutputStream oos = null;
+   private ObjectInputStream ois = null;
+   
+   private GameClient gameClient = null;
+   
+   // Multiplayer
+   private int playerNumber;
+   private ArrayList<Opponent> opponents = new ArrayList<Opponent>();
+   private ArrayList<Player> opponentPlayers = new ArrayList<Player>();
+   
+   private double mainStartX = 0;
+   private double mainStartY = 0;
+   private double mainStartDegree = 0;
+   
+   // Animation Timer
+   private long lastUpdate = 0;
+   
    /** Boolean that determines the input from the keyboard*/
    private boolean gas, brake, turnLeft, turnRight;
    
@@ -199,6 +221,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                // Pass user commands to the Player
                //System.out.println("Turn: " + turn + " Velocity: " + velocity);
                for(Player p:players) // This is here for test purposes only
+               if (now - lastUpdate >= 3_000_000) // Force update every 6.9 MS
                {
                   p.update(turn, velocity);
                }
