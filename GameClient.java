@@ -70,10 +70,16 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    private ObjectOutputStream oos = null;
    private ObjectInputStream ois = null;
    
+   private GameClient gameClient = null;
+   
    // Multiplayer
    private int playerNumber;
    private ArrayList<Opponent> opponents = new ArrayList<Opponent>();
    private ArrayList<Player> opponentPlayers = new ArrayList<Player>();
+   
+   private double mainStartX = 0;
+   private double mainStartY = 0;
+   private double mainStartDegree = 0;
    
    /** Boolean that determines the input from the keyboard*/
    private boolean gas, brake, turnLeft, turnRight;
@@ -92,10 +98,17 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       stage = _stage;
       stage.setTitle("Artem Polkovnikov - Java Racer Online");
       
+      // TRACK
+      track = new StackPane(); 
       
-      // Create the main player
-      // PlayerNumber, NameOfCarFile, StartPosX, StartPosY, StartRotation(degrees)      
-      mainPlayer = new Player(this.stage, 1, carFileArray[carArrayIndex], 130, 320, 180, TRACK_WIDTH, TRACK_HEIGHT);
+      // GameClient
+      gameClient = this;
+      
+      // Image initialization
+      initImages();
+      
+      // Track stack pane
+      track.getChildren().add(imgViewTrack);
       
       // SET SCENES
       titleScreenScene = TitleScreen.getScene(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfServerIp, btnStart);
@@ -112,24 +125,14 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       // Layout
          // ROOT
       root = new GridPane();
-         // TRACK
-      track = new StackPane(); 
-      
-      // Image initialization
-      initImages();
-      
-      // Track stack pane
-      track.getChildren().add(imgViewTrack);
-      
-      track.getChildren().add(mainPlayer);
+            
+      //track.getChildren().add(mainPlayer);
       
       // Root
       TextArea taLog = new TextArea();
       taLog.setPrefColumnCount(5);
       
       root.add(track, 0, 0);
-      //root.add(btnBack, 1, 0);
-      //root.add(taLog, 1, 0);
       
       // setOnAction
       btnBack.setOnAction(this);
@@ -273,14 +276,28 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       imgViewTrack.setFitHeight(TRACK_HEIGHT);
    }
    
+   public void sendCoordinatesToServer(double x, double y, double degree)
+   {
+      // Request
+      try
+      {
+         CoordinateSet cs = new CoordinateSet(playerNumber, x, y, degree);
+         oos.writeObject("UPDATE_COORDINATES");
+         oos.writeObject(cs);
+      }
+      catch(IOException ioe)
+      {
+         DisplayMessage.showAlert(stage, AlertType.ERROR, "Error sending coordinates to the server", ioe + "");
+      }
+   }
+   
    class Client extends Thread
    {
-      // Attributes
-      Player tempMainPlayer = null;
+      // Synchronization
+      private Object lock = new Object();
       
       public Client()
       {
-         tempMainPlayer = mainPlayer;
       }
       
       public void run()
@@ -290,36 +307,14 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             // Open socket for server connection
             socket = new Socket(tfServerIp.getText(), SERVER_PORT);
             
-            // Open input from server																
+            // Input/output with the server																
             oos = new ObjectOutputStream(socket.getOutputStream());
             ois = new ObjectInputStream(socket.getInputStream());
-            
-            // Player initialization
-               // Init request
-            oos.writeObject("INIT_PLAYER");
-               // RECEIVE player number
-            Object obj = ois.readObject();
-            if(obj instanceof Integer)
-            {
-               playerNumber = (Integer)obj;
-            }
-            else
-            {
-               System.out.println((String)obj);
-            }
-            //DisplayMessage.showAlert(stage, AlertType.INFORMATION, "CONNECTED TO THE SERVER", "YAY  " + playerNumber);
-               // SEND car file name
-            oos.writeObject(tempMainPlayer.getCarFileName());
-               // RECEIVE starting coordintaes
-            double x = (double)ois.readObject();
-            double y = (double)ois.readObject();
-            double degree = (double)ois.readObject();
-            tempMainPlayer.setStartingPosition(x, y, degree);
          }
-         catch(ClassNotFoundException cnfe)
-         {
-            DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", cnfe + "");
-         }
+         //catch(ClassNotFoundException cnfe)
+         //{
+         //   DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", cnfe + "");
+         //}
          catch(UnknownHostException uhe)
          {
             DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", uhe + "");
@@ -356,37 +351,76 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                
                switch(command)
                {
+                  case "INIT_PLAYER":
+                     try
+                     {
+                        // Player initialization
+                           // RECEIVE player number
+                        playerNumber = (Integer)ois.readObject();
+                        //DisplayMessage.showAlert(stage, AlertType.INFORMATION, "CONNECTED TO THE SERVER", "YAY  " + playerNumber);
+                           // SEND car file name
+                        oos.writeObject(carFileArray[carArrayIndex]);
+                           // RECEIVE starting coordintaes
+                        mainStartX = (double)ois.readObject();
+                        mainStartY = (double)ois.readObject();
+                        mainStartDegree = (double)ois.readObject();
+                        System.out.println("sX: " + mainStartX + "   sY: " + mainStartY);
+                     }
+                     catch(ClassNotFoundException cnfe)
+                     {
+                        DisplayMessage.showAlert(stage, AlertType.ERROR, "INIT_PLAYER CNFE", cnfe + "");
+                     }
+                     catch(IOException ioe)
+                     {
+                        DisplayMessage.showAlert(stage, AlertType.ERROR, "INIT_PLAYER IOE", ioe + "");
+                     }
+                     break;
                   case "INIT_OPPONENT":
                      try
                      {
                         Opponent op = (Opponent)ois.readObject();
                         opponents.add(op);
-                        DisplayMessage.showAlert(stage, AlertType.INFORMATION, "ClienThread: Opponent Info received", op + "");
+                        //DisplayMessage.showAlert(stage, AlertType.INFORMATION, "INIT_OPPONENT: Opponent Info received", op + "");
+                        System.out.println("Player" + playerNumber + " INIT_OPPONENT: " + op);
                      }
                      catch(ClassNotFoundException cnfe)
                      {
-                        DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", cnfe + "");
+                        DisplayMessage.showAlert(stage, AlertType.ERROR, "INIT_OPPONENT CNFE", cnfe + "");
                      }
                      catch(IOException ioe)
                      {
-                        DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", ioe + "");
+                        DisplayMessage.showAlert(stage, AlertType.ERROR, "INIT_OPPONENT IOE", ioe + "");
                      }
-                     break;
+                     break; // INIT_OPPONENT
                   case "START_GAME":
+                     System.out.println("\nSTART_GAME RECEIVED\n");
+                     
+                     // Create the main player
+                     // PlayerNumber, NameOfCarFile, StartPosX, StartPosY, StartRotation(degrees)      
+                     mainPlayer = new Player(gameClient, stage, playerNumber, carFileArray[carArrayIndex], mainStartX, mainStartY, mainStartDegree, TRACK_WIDTH, TRACK_HEIGHT);
+                     //mainPlayer = new Player(this.stage, playerNumber, carFileArray[carArrayIndex], 0, 0, mainStartDegree, TRACK_WIDTH, TRACK_HEIGHT);
+                     System.out.println("sX: " + mainStartX + "   sY: " + mainStartY);
+
+                     createGameScene();
                      // Create opponents as players
                      for(Opponent op:opponents)
                      {
-                        // this.stage, 1, carFileArray[carArrayIndex], 130, (y), 180, TRACK_WIDTH, TRACK_HEIGHT
-                        Player plOp = new Player(stage, op.getClientNumber(), op.getCarFileName(), op.getStartX(), op.getStartY(), op.getStartDegree(), TRACK_WIDTH, TRACK_HEIGHT);
-                        opponentPlayers.add(op.getClientNumber(), plOp);
+                        Player plOp = new Player(gameClient, stage, op.getClientNumber(), op.getCarFileName(), op.getStartX(), op.getStartY(), op.getStartDegree(), TRACK_WIDTH, TRACK_HEIGHT);
+                        //Player plOp = new Player(stage, op.getClientNumber(), op.getCarFileName(), 0, 0, op.getStartDegree(), TRACK_WIDTH, TRACK_HEIGHT);
+                        opponentPlayers.add(plOp);
+                        System.out.println(op);
                      }
                      
                      for(Player p:opponentPlayers)
                      {
                         track.getChildren().add(p);
+                        //System.out.println(p);
+                        System.out.println(p.getCoordinates());
                      }
+                     track.getChildren().add(mainPlayer);
+                     System.out.println(mainPlayer.getCoordinates());
+                     
                      // Show the game scene
-                     createGameScene();
                      Platform.runLater
                      (
                         new Runnable()
@@ -399,11 +433,36 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                            }
                         }
                      );
-                     break;
-               }
-               
-            }
-         }
-      }
-   }
+                     break; // START_GAME
+                  case "UPDATE_OPPONENT":
+                     synchronized(lock)
+                     {
+                        CoordinateSet cs = null;
+                        try
+                        {
+                           cs = (CoordinateSet)ois.readObject();
+                        }
+                        catch(ClassNotFoundException cnfe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "UPDATE_COORDINATES CNFE", cnfe + "");
+                        }
+                        catch(IOException ioe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "UPDATE_COORDINATES IOE", ioe + "");
+                        }
+                        
+                        for(Player p:opponentPlayers)
+                        {
+                           if(p.getPlayerNumber() == cs.getClientNumber() && cs != null)
+                           {
+                              p.setCoordinates(cs.getX(), cs.getY(), cs.getDegree());
+                           }
+                        }
+                     }
+                     break; // UPDATE_OPPONENT
+               } // switch(command)
+            } // if instanceof String
+         } // while(true)
+      } // run()
+   } // Client
 }
