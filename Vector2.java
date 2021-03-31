@@ -3,7 +3,7 @@
 *  @version 15.03.2021
 */
 
-/** Creates and performs vector operations on a coordinte on a cortesian plane*/
+/** Creates and performs vector operations on a coordinte on a cartesian plane*/
 public class Vector2
 {
     // Members

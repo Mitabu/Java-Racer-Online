@@ -3,7 +3,7 @@
 *  @version 15.03.2021
 */
 
-/** Stores a position on a cortisian plane as a set of X and Y coordinates*/
+/** Stores a position on a cartisian plane as a set of X and Y coordinates*/
 public class Position
 {              
     // Members
