@@ -57,11 +57,11 @@ public class Player extends Pane
    private Position wheelBase; // Center of the car (position of the center of the car)
    private double currentVelocity = 0.0;
    private double currentSteeringAngle = 0.0;
-   private double carMaxSpeed = 135; // Pixels/Second
+   private double carMaxSpeed = 75; // Pixels/Second
    private double carMaxReverseSpeed = -(carMaxSpeed / 2);
    private double steeringAngleMaximum = 30; // Degrees
-   private double steeringStiffness = 30; // Higher = Stiffer
-   private double deltaTime = 60;
+   private double steeringStiffness = 15; // Higher = Stiffer
+   private double deltaTime = 10;
       // Physics
    private double friction = 0.5; // Pixels/Frame
       // DEBUG
@@ -413,14 +413,14 @@ public class Player extends Pane
       // Record new car position into car and move the car
             
       // STOP AT BORDERS (WILL LIKELY BE CHANGED LATER)
-      double xOffset = carWidth / 2; // -(carHeight / 4) to make it stop at the line
-      double yOffset = carWidth;
+      double xOffset = carWidth; // -(carHeight / 4) to make it stop at the line
+      double yOffset = 0;
       double minusXOffset = carWidth;
-      double minusYOffset = carWidth;
+      double minusYOffset = carWidth / 2;
       
-      if(carBody.getX() >= trackBorderX + xOffset)
+      if(carBody.getX() >= trackBorderX - xOffset)
       {
-         carBody.setX(trackBorderX + xOffset);
+         carBody.setX(trackBorderX - xOffset);
          currentVelocity *= 0.8;
       }
       if(carBody.getX() <= minusXOffset)
@@ -428,14 +428,14 @@ public class Player extends Pane
          carBody.setX(minusXOffset);
          currentVelocity *= 0.8;
       }
-      if(carBody.getY() >= trackBorderY + yOffset)
+      if(carBody.getY() >= trackBorderY - yOffset)
       {
-         carBody.setY(trackBorderY + yOffset);
+         carBody.setY(trackBorderY - yOffset);
          currentVelocity *= 0.8;
       }
-      if(carBody.getY() <= minusYOffset)
+      if(carBody.getY() <= -minusYOffset)
       {
-         carBody.setY(minusYOffset);
+         carBody.setY(-minusYOffset);
          currentVelocity *= 0.8;
       }
       

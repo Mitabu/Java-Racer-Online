@@ -19,7 +19,7 @@ import java.net.*;
 
 /**
 *  @author Artem Polkovnikov
-*  @version 29.03.2021
+*  @version 31.03.2021
 */
 
 public class GameServer extends Application implements EventHandler<ActionEvent>
@@ -56,6 +56,9 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
    private Button btnStartGame = new Button("Start Game");
       // Log
    private TextArea taLog = new TextArea();
+   
+   // Synchronization
+   private Object clientThreadsLock = new Object();
    
    // Game
    private int numOfPlayers;
@@ -234,7 +237,10 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             }
             
             ClientThread ct = new ClientThread(cSocket, playerNum);
-            clientThreads.add(ct);
+            synchronized(clientThreadsLock)
+            {
+               clientThreads.add(ct);
+            }
             taLog.appendText("\nPlayer" + playerNum + " joined\n");
             numOfPlayers--;
             playerNum++;
@@ -287,6 +293,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          // General
       private Socket cSocket = null;
       private int clientNumber;
+      private boolean error = false;
          // Client Server Communication
       private ObjectOutputStream oos = null;
       private ObjectInputStream ois = null;
@@ -320,7 +327,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
       public void run()
       {
          // Client communication loop
-         while(true)
+         while(!error)
          {
             Object input = null;
             
@@ -332,14 +339,17 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             catch(SocketException se)
             {
                DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", se + "");
+               error = true;
             }
             catch(ClassNotFoundException cnfe)
             {
                DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", cnfe + "");
+               error = true;
             }
             catch(IOException ioe)
             {
                DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", ioe + "");
+               error = true;
             }
             
             if(input instanceof String)
@@ -358,11 +368,13 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                         }
                         catch(ClassNotFoundException cnfe)
                         {
-                           DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", cnfe + "");
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: UPDATE_COORDINATES", cnfe + "");
+                           error = true;
                         }
                         catch(IOException ioe)
                         {
-                           DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", ioe + "");
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: UPDATE_COORDINATES", ioe + "");
+                           error = true;
                         }
                      }
                      if(cs != null)
@@ -375,11 +387,88 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                            }
                         }
                      }
-                     break;
+                     break; // UPDATE_COORDINATES
+                  case "CHAT_MESSAGE":
+                     int clientNumber = 0;
+                     String message = null;
+                     
+                     synchronized(lock)
+                     {
+                        try
+                        {
+                           clientNumber = (Integer)ois.readObject();
+                           message = (String)ois.readObject();
+                        }
+                        catch(ClassNotFoundException cnfe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: CHAT_MESSAGE", cnfe + "");
+                           error = true;
+                        }
+                        catch(IOException ioe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: CHAT_MESSAGE", ioe + "");
+                           error = true;
+                        }
+                     }
+                     
+                     for(ClientThread ct:clientThreads)
+                     {
+                        if(ct.getClientNumber() != clientNumber)
+                        {
+                           ct.receiveChatMessage(clientNumber, message);
+                        }
+                     }
+                     break; // CHAT_MESSAGE
+                  case "PRIVATE_CHAT_MESSAGE":
+                     int senderNumber = 0;
+                     int recepientNumber = 0;
+                     String privateMessage = null;
+                     
+                     synchronized(lock)
+                     {
+                        try
+                        {
+                           senderNumber = (Integer)ois.readObject();
+                           recepientNumber = (Integer)ois.readObject();
+                           privateMessage = (String)ois.readObject();
+                        }
+                        catch(ClassNotFoundException cnfe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: PRIVATE_CHAT_MESSAGE", cnfe + "");
+                           error = true;
+                        }
+                        catch(IOException ioe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: PRIVATE_CHAT_MESSAGE", ioe + "");
+                           error = true;
+                        }
+                     }
+                     
+                     for(ClientThread ct:clientThreads)
+                     {
+                        if(ct.getClientNumber() == recepientNumber)
+                        {
+                           ct.receivePrivateChatMessage(senderNumber, privateMessage);
+                        }
+                     }
+                     break; // PRIVATE_CHAT_MESSAGE
                }
             }
-         } // while(true)
-               
+         } // while(!error)
+         
+         if(error)
+         {
+            synchronized(clientThreadsLock)
+            {
+               for(ClientThread ct:clientThreads)
+               {
+                  if(ct.getClientNumber() == clientNumber)
+                  {
+                     clientThreads.remove(ct);
+                  }
+               }
+            }
+         }   
       } // run()
       
       /** Initializes and record player data to the list on the server*/
@@ -458,7 +547,41 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             }
             catch(IOException ioe)
             {
-               DisplayMessage.showAlert(stage, AlertType.ERROR, "updateCoordinates() IOE", ioe + "");
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "updateOpponent() IOE", ioe + "");
+            }
+         }
+      }
+      
+      public void receiveChatMessage(int _clientNumber, String _message)
+      {
+         synchronized(lock)
+         {
+            try
+            {
+               oos.writeObject("RECEIVE_MESSAGE");
+               oos.writeObject(_clientNumber);
+               oos.writeObject(_message);
+            }
+            catch(IOException ioe)
+            {
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "receiveChatMessage() IOE", ioe + "");
+            }
+         }
+      }
+      
+      public void receivePrivateChatMessage(int _senderNumber, String _message)
+      {
+         synchronized(lock)
+         {
+            try
+            {
+               oos.writeObject("RECEIVE_PRIVATE_MESSAGE");
+               oos.writeObject(_senderNumber);
+               oos.writeObject(_message);
+            }
+            catch(IOException ioe)
+            {
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "receiveChatMessage() IOE", ioe + "");
             }
          }
       }

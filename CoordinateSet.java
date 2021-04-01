@@ -3,6 +3,11 @@ import java.io.*;
 import java.util.*;
 import java.net.*;
 
+/**
+*  @author Artem Polkovnikov
+*  @version 31.03.2021
+*/
+
 public class CoordinateSet implements Serializable
 {
    // Attributes

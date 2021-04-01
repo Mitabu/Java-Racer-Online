@@ -2,8 +2,10 @@
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.*;
+import javafx.scene.input.*;
 import javafx.scene.*;
 import javafx.scene.text.*;
+import javafx.scene.control.Button; 
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.*;
 import javafx.scene.layout.*;
@@ -17,10 +19,13 @@ import javafx.scene.input.KeyEvent;// Key Listener
 import java.io.*;
 import java.util.*;
 import java.net.*;
+import java.text.FieldPosition;
+import java.text.Format;
+import java.text.ParsePosition;
 
 /**
 *  @author Artem Polkovnikov
-*  @version 16.03.2021
+*  @version 31.03.2021
 */
 
 public class GameClient extends Application implements EventHandler<ActionEvent>
@@ -33,8 +38,11 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       // Track (16/9)
    public static final double TRACK_WIDTH = 1550;
    public static final double TRACK_HEIGHT = 872;
+      // Chat
+   public static final double CHAT_WIDTH = 250;
+   public static final double CHAT_HEIGHT = 500;
       // Window
-   public static final double WINDOW_WIDTH = TRACK_WIDTH;
+   public static final double WINDOW_WIDTH = TRACK_WIDTH + CHAT_WIDTH;
    public static final double WINDOW_HEIGHT = TRACK_HEIGHT;
    
    // Layout
@@ -72,6 +80,9 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    
    private GameClient gameClient = null;
    
+      // Synchronization
+   private Object oosLock = new Object();
+   
    // Multiplayer
    private int playerNumber;
    private ArrayList<Opponent> opponents = new ArrayList<Opponent>();
@@ -81,8 +92,42 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    private double mainStartY = 0;
    private double mainStartDegree = 0;
    
+      // Chat
+         // General
+   private VBox rootChat = new VBox(5);
+   private VBox rootPublicChat = new VBox(5);
+   private VBox rootPrivateChat = new VBox(5);
+
+         // Public Chat
+   private static final double BUTTON_SLEEP = 2000;
+   private TextArea taChatBox = new TextArea();
+   private TextField tfChatEnter = new TextField();
+   private Button btnGLHF = null;
+   private Button btnGG = null;
+   
+         // Private Chat
+   private TextArea taP1Chat = new TextArea();
+   private TextArea taP2Chat = new TextArea();
+   private TextArea taP3Chat = new TextArea();
+   private TextArea taP4Chat = new TextArea();
+   
+   private String[] playerNames = {"Player 1", "Player 2", "Player 3", "Player 4"};
+   
+   private Button btnP1Chat = new Button(playerNames[0]);
+   private Button btnP2Chat = new Button(playerNames[1]);
+   private Button btnP3Chat = new Button(playerNames[2]);
+   private Button btnP4Chat = new Button(playerNames[3]);
+   
+   private int privateChatClientNumber = 1;
+   
+   private TextField tfPrivateChatEnter = new TextField();
+   private Button btnPrivateChatEnter = new Button("Send Private");
+   
    // Animation Timer
    private long lastUpdate = 0;
+   
+   // GAME
+   private boolean error = false;
    
    /** Boolean that determines the input from the keyboard*/
    private boolean gas, brake, turnLeft, turnRight;
@@ -127,6 +172,8 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       
       stage.setScene(titleScreenScene);
       stage.setResizable(false);
+      stage.setX(20);
+      stage.setY(20);
       stage.show();
    }
    
@@ -142,7 +189,134 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       TextArea taLog = new TextArea();
       taLog.setPrefColumnCount(5);
       
+      // CHAT
+/////////// PUBLIC CHAT
+         FlowPane fpPublicChat = new FlowPane(5,5);
+            Text txtPublicChat = new Text("Public Chat");
+            txtPublicChat.setStyle("-fx-font-size: 25px; -fx-font-weight: bold");
+            fpPublicChat.setAlignment(Pos.CENTER);
+            fpPublicChat.getChildren().add(txtPublicChat);
+            
+            taChatBox.setPrefWidth(250);
+            taChatBox.setPrefHeight(400);
+            taChatBox.setEditable(false);
+            taChatBox.setText("Public Chat Room");
+            
+         FlowPane fpChatPreset = new FlowPane(5,5);
+            fpChatPreset.setAlignment(Pos.CENTER);
+            btnGLHF = new Button("GLHF");
+            btnGG = new Button("GG");
+            fpChatPreset.getChildren().addAll(btnGLHF, btnGG);
+            
+         FlowPane fpChatEnter = new FlowPane(5,5);
+            fpChatEnter.setAlignment(Pos.CENTER);
+            tfChatEnter.setPromptText("Message...");
+            tfChatEnter.setPrefColumnCount(15);
+            Button btnChatEnter = new Button("Send");
+            fpChatEnter.getChildren().addAll(tfChatEnter, btnChatEnter);
+      
+      rootPublicChat.getChildren().addAll(/*fpMinimize,*/fpPublicChat, taChatBox, fpChatPreset, fpChatEnter);
+
+/////////// PRIVATE CHAT
+      // Sign
+      FlowPane fpPrivateChat = new FlowPane(5,5);
+         Text txtPrivateChat = new Text("Private Chat");
+         txtPrivateChat.setStyle("-fx-font-size: 25px; -fx-font-weight: bold");
+         fpPrivateChat.setAlignment(Pos.CENTER);
+      fpPrivateChat.getChildren().add(txtPrivateChat);
+      
+      // Buttons
+      FlowPane fpPlayerSelect = new FlowPane(5,5);
+         fpPlayerSelect.setAlignment(Pos.CENTER);
+         for(Opponent op:opponents)
+         {
+            int opponentId = op.getClientNumber();
+            Button btnOpponent = null;
+            
+            switch(opponentId)
+            {
+               case 1:
+                  btnOpponent = btnP1Chat;
+                  break;
+               case 2:
+                  btnOpponent = btnP2Chat;
+                  break;
+               case 3:
+                  btnOpponent = btnP3Chat;
+                  break;
+               case 4:
+                  btnOpponent = btnP4Chat;
+                  break;
+            }
+            
+            if(btnOpponent != null)
+            {
+               fpPlayerSelect.getChildren().add(btnOpponent);
+            }
+         } // for(Opponent)
+         showPrivateChat(opponents.get(0).getClientNumber());
+      
+      // Logs
+      StackPane spPrivateChat = new StackPane();
+         spPrivateChat.setAlignment(Pos.CENTER);
+            taP1Chat.setPrefWidth(CHAT_WIDTH);
+            taP1Chat.setPrefHeight(200);
+            taP1Chat.setEditable(false);
+            taP1Chat.setText("Player1 Private Chat Room");
+            
+            taP2Chat.setPrefWidth(CHAT_WIDTH);
+            taP2Chat.setPrefHeight(200);
+            taP2Chat.setEditable(false);
+            taP2Chat.setText("Player2 Private Chat Room");
+         
+            taP3Chat.setPrefWidth(CHAT_WIDTH);
+            taP3Chat.setPrefHeight(200);
+            taP3Chat.setEditable(false);
+            taP3Chat.setText("Player3 Private Chat Room");
+         
+            taP4Chat.setPrefWidth(CHAT_WIDTH);
+            taP4Chat.setPrefHeight(200);
+            taP4Chat.setEditable(false);
+            taP4Chat.setText("Player4 Private Chat Room");
+      spPrivateChat.getChildren().addAll(taP1Chat, taP2Chat, taP3Chat, taP4Chat);
+      
+      // Send private
+      FlowPane fpPrivateChatEnter = new FlowPane(5,5);
+         fpPrivateChatEnter.setAlignment(Pos.CENTER);
+         tfPrivateChatEnter.setPromptText("Message...");
+         tfPrivateChatEnter.setPrefColumnCount(12);
+         fpPrivateChatEnter.getChildren().addAll(tfPrivateChatEnter, btnPrivateChatEnter);
+         
+      
+      rootPrivateChat.getChildren().addAll(fpPrivateChat, fpPlayerSelect, spPrivateChat, fpPrivateChatEnter);
+      
+      Label lblFill1 = new Label("");
+      Label lblFill2 = new Label("");
+      
+      rootChat.getChildren().addAll(rootPublicChat, lblFill1, lblFill2, rootPrivateChat);
+      
+      // CHAT setOnAction()
+      btnChatEnter.setOnAction(this);
+      btnGLHF.setOnAction(this);
+      btnGG.setOnAction(this);
+      
+      btnPrivateChatEnter.setOnAction(this);
+      btnP1Chat.setOnAction(this);
+      btnP2Chat.setOnAction(this);
+      btnP3Chat.setOnAction(this);
+      btnP4Chat.setOnAction(this);
+      
+      
+      // Track focus request
+      track.setOnMouseClicked(new EventHandler<MouseEvent>() {
+          @Override
+          public void handle(MouseEvent mouseEvent) {
+              track.requestFocus();
+          }
+      });
+      
       root.add(track, 0, 0);
+      root.add(rootChat, 1, 0);
       
       // setOnAction
       btnBack.setOnAction(this);
@@ -191,7 +365,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             @Override
             public void handle(long now)
             {
-               if (now - lastUpdate >= 3_000_000) // Force update every 6.9 MS
+               if (now - lastUpdate >= 16_900_000) // Force update every 6.9 MS
                {
                   // Get the turning value
                   int turn = 0;
@@ -265,7 +439,191 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                stage.setScene(titleScreenScene);
                stage.show();
                break;
+            case "Send":
+               String text = tfChatEnter.getText();
+               tfChatEnter.clear();
+                              
+               if(text.length() > 0)
+               {
+                  taChatBox.appendText("\nYou: " + text);
+                  sendChatMessageToServer(text);
+               }
+               break;
+            case "GLHF":
+               taChatBox.appendText("\nYou: GLHF!");
+               sendChatMessageToServer("GLHF!");
+               btnGLHF.setDisable(true);
+               ButtonSleep bsGLHF = new ButtonSleep(btnGLHF, BUTTON_SLEEP);
+               bsGLHF.start();
+               break;
+            case "GG":
+               taChatBox.appendText("\nYou: GG");
+               sendChatMessageToServer("GG");
+               btnGG.setDisable(true);
+               ButtonSleep bsGG = new ButtonSleep(btnGG, BUTTON_SLEEP);
+               bsGG.start();
+               break;
+            case "Player 1":
+               privateChatClientNumber = 1;
+               
+               showPrivateChat(privateChatClientNumber);
+               break;
+            case "Player 2":
+               privateChatClientNumber = 2;
+               
+               showPrivateChat(privateChatClientNumber);
+               break;
+            case "Player 3":
+               privateChatClientNumber = 3;
+               
+               showPrivateChat(privateChatClientNumber);
+               break;
+            case "Player 4":
+               privateChatClientNumber = 4;
+               
+               showPrivateChat(privateChatClientNumber);
+               break;
+            case "Send Private":
+               String privateText = tfPrivateChatEnter.getText();
+               tfPrivateChatEnter.clear();
+                              
+               if(privateText.length() > 0)
+               {
+                  switch(privateChatClientNumber)
+                  {
+                     case 1:
+                        taP1Chat.appendText("\nYou: " + privateText);
+                        break;
+                     case 2:
+                        taP2Chat.appendText("\nYou: " + privateText);
+                        break;
+                     case 3:
+                        taP3Chat.appendText("\nYou: " + privateText);
+                        break;
+                     case 4:
+                        taP4Chat.appendText("\nYou: " + privateText);
+                        break;
+                  }
+                  
+                  sendPrivateChatMessageToServer(privateChatClientNumber, privateText);
+               }
+               break;
          }
+      }
+   }
+   
+   class ButtonSleep extends Thread
+   {
+      // Attributes
+      Button btn;
+      double time;
+      public ButtonSleep(Button _btn, double _time)
+      {
+         this.btn = _btn;
+         this.time = _time;
+      }
+      
+      public void run()
+      {
+         try
+         {
+            Thread.sleep((long)time);
+         }
+         catch(InterruptedException ie)
+         {
+            DisplayMessage.showAlert(stage, AlertType.ERROR, "ButtonSleep", ie + "");
+         }
+         
+         Platform.runLater
+         (
+            new Runnable()
+            {
+               public void run()
+               {
+                  btn.setDisable(false);
+               }
+            }
+         );
+      }
+   }
+   
+   public void showPrivateChat(int _chatId)
+   {
+      showPrivateChat(_chatId, "");
+   }
+   
+   public void showPrivateChat(int _chatId, String _message)
+   {
+      switch(_chatId)
+      {
+         case 1:
+            
+            if(_message.length() > 0)
+            {
+               taP1Chat.appendText("\nPlayer" + _chatId + ": " + _message);
+            }
+            
+            taP1Chat.setVisible(true);
+            taP2Chat.setVisible(false);
+            taP3Chat.setVisible(false);
+            taP4Chat.setVisible(false);
+            
+            btnP1Chat.setStyle("-fx-underline: true; -fx-font-weight: bold");
+            btnP2Chat.setStyle("-fx-underline: false; -fx-font-weight: normal");
+            btnP3Chat.setStyle("-fx-underline: false; -fx-font-weight: normal");
+            btnP4Chat.setStyle("-fx-underline: false; -fx-font-weight: normal");
+            break;
+         case 2:
+         
+            if(_message.length() > 0)
+            {
+               taP2Chat.appendText("\nPlayer" + _chatId + ": " + _message);
+            }
+         
+            taP1Chat.setVisible(false);
+            taP2Chat.setVisible(true);
+            taP3Chat.setVisible(false);
+            taP4Chat.setVisible(false);
+            
+            btnP1Chat.setStyle("-fx-underline: false; -fx-font-weight: normal");
+            btnP2Chat.setStyle("-fx-underline: true; -fx-font-weight: bold");
+            btnP3Chat.setStyle("-fx-underline: false; -fx-font-weight: normal");
+            btnP4Chat.setStyle("-fx-underline: false; -fx-font-weight: normal");
+            break;
+         case 3:
+            
+            if(_message.length() > 0)
+            {
+               taP3Chat.appendText("\nPlayer" + _chatId + ": " + _message);
+            }
+         
+            taP1Chat.setVisible(false);
+            taP2Chat.setVisible(false);
+            taP3Chat.setVisible(true);
+            taP4Chat.setVisible(false);
+            
+            btnP1Chat.setStyle("-fx-underline: false; -fx-font-weight: normal");
+            btnP2Chat.setStyle("-fx-underline: false; -fx-font-weight: normal");
+            btnP3Chat.setStyle("-fx-underline: true; -fx-font-weight: bold");
+            btnP4Chat.setStyle("-fx-underline: false; -fx-font-weight: normal");
+            break;
+         case 4:
+         
+            if(_message.length() > 0)
+            {
+               taP4Chat.appendText("\nPlayer" + _chatId + ": " + _message);
+            }
+         
+            taP1Chat.setVisible(false);
+            taP2Chat.setVisible(false);
+            taP3Chat.setVisible(false);
+            taP4Chat.setVisible(true);
+            
+            btnP1Chat.setStyle("-fx-underline: false");
+            btnP2Chat.setStyle("-fx-underline: false");
+            btnP3Chat.setStyle("-fx-underline: false");
+            btnP4Chat.setStyle("-fx-underline: true; -fx-font-weight: bold");
+            break;
       }
    }
    
@@ -290,18 +648,62 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       imgViewTrack.setFitHeight(TRACK_HEIGHT);
    }
    
-   public void sendCoordinatesToServer(double x, double y, double degree)
+   public void sendChatMessageToServer(String _message)
    {
-      CoordinateSet cs = new CoordinateSet(playerNumber, x, y, degree);
       // Request
       try
       {
-         oos.writeObject("UPDATE_COORDINATES");
-         oos.writeObject(cs);
+         synchronized(oosLock)
+         {
+            oos.writeObject("CHAT_MESSAGE");
+            oos.writeObject(playerNumber);
+            oos.writeObject(_message);  
+         }
       }
       catch(IOException ioe)
       {
          DisplayMessage.showAlert(stage, AlertType.ERROR, "Error sending coordinates to the server", ioe + "");
+      }
+   }
+   
+   public void sendPrivateChatMessageToServer(int _recipientNumber, String _message)
+   {
+      // Request
+      try
+      {
+         synchronized(oosLock)
+         {
+            oos.writeObject("PRIVATE_CHAT_MESSAGE");
+            oos.writeObject(playerNumber);
+            oos.writeObject(_recipientNumber);
+            oos.writeObject(_message);  
+         }
+      }
+      catch(IOException ioe)
+      {
+         DisplayMessage.showAlert(stage, AlertType.ERROR, "Error sending coordinates to the server", ioe + "");
+      }
+   }
+   
+   public void sendCoordinatesToServer(double x, double y, double degree)
+   {
+      if(!error)
+      {
+         CoordinateSet cs = new CoordinateSet(playerNumber, x, y, degree);
+         // Request
+         try
+         {
+            synchronized(oosLock)
+            {
+               oos.writeObject("UPDATE_COORDINATES");
+               oos.writeObject(cs);  
+            }
+         }
+         catch(IOException ioe)
+         {
+            DisplayMessage.showAlert(stage, AlertType.ERROR, "Error sending coordinates to the server", ioe + "");
+            error = true;
+         }
       }
    }
    
@@ -346,7 +748,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          }
          
          // Start listening to server inputs
-         while(true)
+         while(!error)
          {
             Object input = null;
             
@@ -359,14 +761,17 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             {
                DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", ce + "");
                btnStart.setDisable(false);
+               error = true;
             }
             catch(ClassNotFoundException cnfe)
             {
                DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", cnfe + "");
+               error = true;
             }
             catch(IOException ioe)
             {
                DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", ioe + "");
+               error = true;
             }
             
             if(input instanceof String)
@@ -393,10 +798,12 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      catch(ClassNotFoundException cnfe)
                      {
                         DisplayMessage.showAlert(stage, AlertType.ERROR, "INIT_PLAYER CNFE", cnfe + "");
+                        error = true;
                      }
                      catch(IOException ioe)
                      {
                         DisplayMessage.showAlert(stage, AlertType.ERROR, "INIT_PLAYER IOE", ioe + "");
+                        error = true;
                      }
                      break;
                   case "INIT_OPPONENT":
@@ -410,10 +817,12 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      catch(ClassNotFoundException cnfe)
                      {
                         DisplayMessage.showAlert(stage, AlertType.ERROR, "INIT_OPPONENT CNFE", cnfe + "");
+                        error = true;
                      }
                      catch(IOException ioe)
                      {
                         DisplayMessage.showAlert(stage, AlertType.ERROR, "INIT_OPPONENT IOE", ioe + "");
+                        error = true;
                      }
                      break; // INIT_OPPONENT
                   case "START_GAME":
@@ -469,10 +878,12 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         catch(ClassNotFoundException cnfe)
                         {
                            DisplayMessage.showAlert(stage, AlertType.ERROR, "UPDATE_COORDINATES CNFE", cnfe + "");
+                           error = true;
                         }
                         catch(IOException ioe)
                         {
                            DisplayMessage.showAlert(stage, AlertType.ERROR, "UPDATE_COORDINATES IOE", ioe + "");
+                           error = true;
                         }
                         
                         for(Player p:opponentPlayers)
@@ -485,6 +896,56 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         }
                      }
                      break; // UPDATE_OPPONENT
+                  case "RECEIVE_MESSAGE":
+                     int senderId = 0;
+                     String message = "";
+                     synchronized(lock)
+                     {   
+                        try
+                        {
+                           senderId = (Integer)ois.readObject();
+                           message = (String)ois.readObject();
+                        }
+                        catch(ClassNotFoundException cnfe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "RECEIVE_MESSAGE CNFE", cnfe + "");
+                           error = true;
+                        }
+                        catch(IOException ioe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "RECEIVE_MESSAGE IOE", ioe + "");
+                           error = true;
+                        }
+                     }
+                     
+                     String chatMessage = String.format("Player%d: %s", senderId, message);
+                     
+                     taChatBox.appendText("\n" + chatMessage);
+                     break; // RECEIVE_MESSAGE
+                  case "RECEIVE_PRIVATE_MESSAGE":
+                     int privateSenderId = 0;
+                     String privateMessage = "";
+                     synchronized(lock)
+                     {   
+                        try
+                        {
+                           privateSenderId = (Integer)ois.readObject();
+                           privateMessage = (String)ois.readObject();
+                        }
+                        catch(ClassNotFoundException cnfe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "RECEIVE_MESSAGE CNFE", cnfe + "");
+                           error = true;
+                        }
+                        catch(IOException ioe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "RECEIVE_MESSAGE IOE", ioe + "");
+                           error = true;
+                        }
+                     }
+                     
+                     showPrivateChat(privateSenderId, privateMessage);
+                     break; // RECEIVE_PRIVATE_MESSAGE
                } // switch(command)
             } // if instanceof String
          } // while(true)
