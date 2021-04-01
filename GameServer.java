@@ -19,7 +19,7 @@ import java.net.*;
 
 /**
 *  @author Artem Polkovnikov
-*  @version 31.03.2021
+*  @version 02.04.2021
 */
 
 public class GameServer extends Application implements EventHandler<ActionEvent>

@@ -25,7 +25,7 @@ import java.text.ParsePosition;
 
 /**
 *  @author Artem Polkovnikov
-*  @version 31.03.2021
+*  @version 02.04.2021
 */
 
 public class GameClient extends Application implements EventHandler<ActionEvent>
@@ -102,8 +102,12 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    private static final double BUTTON_SLEEP = 2000;
    private TextArea taChatBox = new TextArea();
    private TextField tfChatEnter = new TextField();
-   private Button btnGLHF = null;
-   private Button btnGG = null;
+   
+   private Button btnGLHF = new Button("GLHF");
+   private Button btnGG = new Button("GG");
+   private Button btnWP = new Button("WP");
+   
+   private Button[] reactionButtons = {btnGLHF, btnGG, btnWP};
    
          // Private Chat
    private TextArea taP1Chat = new TextArea();
@@ -200,13 +204,11 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             taChatBox.setPrefWidth(250);
             taChatBox.setPrefHeight(400);
             taChatBox.setEditable(false);
-            taChatBox.setText("Public Chat Room");
+            taChatBox.setText("Public Chat Room\n");
             
          FlowPane fpChatPreset = new FlowPane(5,5);
             fpChatPreset.setAlignment(Pos.CENTER);
-            btnGLHF = new Button("GLHF");
-            btnGG = new Button("GG");
-            fpChatPreset.getChildren().addAll(btnGLHF, btnGG);
+            fpChatPreset.getChildren().addAll(btnGLHF, btnGG, btnWP);
             
          FlowPane fpChatEnter = new FlowPane(5,5);
             fpChatEnter.setAlignment(Pos.CENTER);
@@ -262,22 +264,22 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             taP1Chat.setPrefWidth(CHAT_WIDTH);
             taP1Chat.setPrefHeight(200);
             taP1Chat.setEditable(false);
-            taP1Chat.setText("Player1 Private Chat Room");
+            taP1Chat.setText("Player1 Private Chat Room\n");
             
             taP2Chat.setPrefWidth(CHAT_WIDTH);
             taP2Chat.setPrefHeight(200);
             taP2Chat.setEditable(false);
-            taP2Chat.setText("Player2 Private Chat Room");
+            taP2Chat.setText("Player2 Private Chat Room\n");
          
             taP3Chat.setPrefWidth(CHAT_WIDTH);
             taP3Chat.setPrefHeight(200);
             taP3Chat.setEditable(false);
-            taP3Chat.setText("Player3 Private Chat Room");
+            taP3Chat.setText("Player3 Private Chat Room\n");
          
             taP4Chat.setPrefWidth(CHAT_WIDTH);
             taP4Chat.setPrefHeight(200);
             taP4Chat.setEditable(false);
-            taP4Chat.setText("Player4 Private Chat Room");
+            taP4Chat.setText("Player4 Private Chat Room\n");
       spPrivateChat.getChildren().addAll(taP1Chat, taP2Chat, taP3Chat, taP4Chat);
       
       // Send private
@@ -299,6 +301,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       btnChatEnter.setOnAction(this);
       btnGLHF.setOnAction(this);
       btnGG.setOnAction(this);
+      btnWP.setOnAction(this);
       
       btnPrivateChatEnter.setOnAction(this);
       btnP1Chat.setOnAction(this);
@@ -330,13 +333,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             @Override
             public void handle(KeyEvent event) {
                switch (event.getCode()) {
-                  case W: case UP:    gas = true; 
+                  case W:    gas = true; 
                      break;
-                  case S: case DOWN:  brake = true; 
+                  case S:    brake = true; 
                      break;
-                  case A: case LEFT:  turnLeft  = true; 
+                  case A:    turnLeft  = true; 
                      break;
-                  case D: case RIGHT: turnRight  = true; 
+                  case D:    turnRight  = true; 
                      break;
                }
             }
@@ -347,13 +350,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             @Override
             public void handle(KeyEvent event) {
                switch (event.getCode()) {
-                  case W: case UP:    gas = false; 
+                  case W:      gas = false; 
                      break;
-                  case S: case DOWN:  brake = false; 
+                  case S:      brake = false; 
                      break;
-                  case A: case LEFT:  turnLeft  = false; 
+                  case A:      turnLeft  = false; 
                      break;
-                  case D: case RIGHT: turnRight  = false; 
+                  case D:      turnRight  = false; 
                      break;
                }
             }
@@ -452,35 +455,31 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             case "GLHF":
                taChatBox.appendText("\nYou: GLHF!");
                sendChatMessageToServer("GLHF!");
-               btnGLHF.setDisable(true);
-               ButtonSleep bsGLHF = new ButtonSleep(btnGLHF, BUTTON_SLEEP);
+               ButtonsSleep bsGLHF = new ButtonsSleep(btnGLHF, BUTTON_SLEEP);
                bsGLHF.start();
                break;
             case "GG":
                taChatBox.appendText("\nYou: GG");
                sendChatMessageToServer("GG");
-               btnGG.setDisable(true);
-               ButtonSleep bsGG = new ButtonSleep(btnGG, BUTTON_SLEEP);
+               ButtonsSleep bsGG = new ButtonsSleep(btnGG, BUTTON_SLEEP);
                bsGG.start();
                break;
+            case "WP":
+               taChatBox.appendText("\nYou: Well Played!");
+               sendChatMessageToServer("Well Played!");
+               ButtonsSleep bsWP = new ButtonsSleep(btnWP, BUTTON_SLEEP);
+               bsWP.start();
+               break;
             case "Player 1":
-               privateChatClientNumber = 1;
-               
                showPrivateChat(privateChatClientNumber);
                break;
             case "Player 2":
-               privateChatClientNumber = 2;
-               
                showPrivateChat(privateChatClientNumber);
                break;
             case "Player 3":
-               privateChatClientNumber = 3;
-               
                showPrivateChat(privateChatClientNumber);
                break;
             case "Player 4":
-               privateChatClientNumber = 4;
-               
                showPrivateChat(privateChatClientNumber);
                break;
             case "Send Private":
@@ -512,12 +511,12 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       }
    }
    
-   class ButtonSleep extends Thread
+   class ButtonsSleep extends Thread
    {
       // Attributes
       Button btn;
       double time;
-      public ButtonSleep(Button _btn, double _time)
+      public ButtonsSleep(Button _btn, double _time)
       {
          this.btn = _btn;
          this.time = _time;
@@ -525,6 +524,22 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       
       public void run()
       {
+         // Disable all reaction buttons
+         Platform.runLater
+         (
+            new Runnable()
+            {
+               public void run()
+               {
+                  for(Button btn:reactionButtons)
+                  {
+                     btn.setDisable(true);
+                  }
+               }
+            }
+         );
+         
+         // Wait
          try
          {
             Thread.sleep((long)time);
@@ -534,13 +549,17 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             DisplayMessage.showAlert(stage, AlertType.ERROR, "ButtonSleep", ie + "");
          }
          
+         // Enable all reaction buttons
          Platform.runLater
          (
             new Runnable()
             {
                public void run()
                {
-                  btn.setDisable(false);
+                  for(Button btn:reactionButtons)
+                  {
+                     btn.setDisable(false);
+                  }
                }
             }
          );
@@ -562,6 +581,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             {
                taP1Chat.appendText("\nPlayer" + _chatId + ": " + _message);
             }
+            privateChatClientNumber = 1;
             
             taP1Chat.setVisible(true);
             taP2Chat.setVisible(false);
@@ -579,7 +599,9 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             {
                taP2Chat.appendText("\nPlayer" + _chatId + ": " + _message);
             }
-         
+            
+            privateChatClientNumber = 2;
+            
             taP1Chat.setVisible(false);
             taP2Chat.setVisible(true);
             taP3Chat.setVisible(false);
@@ -596,7 +618,9 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             {
                taP3Chat.appendText("\nPlayer" + _chatId + ": " + _message);
             }
-         
+            
+            privateChatClientNumber = 3;
+            
             taP1Chat.setVisible(false);
             taP2Chat.setVisible(false);
             taP3Chat.setVisible(true);
@@ -613,7 +637,9 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             {
                taP4Chat.appendText("\nPlayer" + _chatId + ": " + _message);
             }
-         
+            
+            privateChatClientNumber = 4;
+            
             taP1Chat.setVisible(false);
             taP2Chat.setVisible(false);
             taP3Chat.setVisible(false);

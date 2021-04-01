@@ -21,7 +21,7 @@ import java.util.ArrayList;
 
 /**
 *  @author Artem Polkovnikov
-*  @version 16.03.2021
+*  @version 01.04.2021
 */
 
 public class Player extends Pane
