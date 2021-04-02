@@ -86,7 +86,10 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    // Multiplayer
    private int playerNumber;
    private ArrayList<Opponent> opponents = new ArrayList<Opponent>();
+   private Object opponentsLock = new Object();
+   
    private ArrayList<Player> opponentPlayers = new ArrayList<Player>();
+   private Object opponentPlayersLock = new Object();
    
    private double mainStartX = 0;
    private double mainStartY = 0;
@@ -100,7 +103,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
 
          // Public Chat
    private static final double BUTTON_SLEEP = 2000;
-   private TextArea taChatBox = new TextArea();
+   private TextArea taPublicChat = new TextArea();
    private TextField tfChatEnter = new TextField();
    
    private Button btnGLHF = new Button("GLHF");
@@ -201,10 +204,10 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             fpPublicChat.setAlignment(Pos.CENTER);
             fpPublicChat.getChildren().add(txtPublicChat);
             
-            taChatBox.setPrefWidth(250);
-            taChatBox.setPrefHeight(400);
-            taChatBox.setEditable(false);
-            taChatBox.setText("Public Chat Room\n");
+            taPublicChat.setPrefWidth(250);
+            taPublicChat.setPrefHeight(400);
+            taPublicChat.setEditable(false);
+            taPublicChat.setText("Public Chat Room\n");
             
          FlowPane fpChatPreset = new FlowPane(5,5);
             fpChatPreset.setAlignment(Pos.CENTER);
@@ -217,7 +220,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             Button btnChatEnter = new Button("Send");
             fpChatEnter.getChildren().addAll(tfChatEnter, btnChatEnter);
       
-      rootPublicChat.getChildren().addAll(/*fpMinimize,*/fpPublicChat, taChatBox, fpChatPreset, fpChatEnter);
+      rootPublicChat.getChildren().addAll(/*fpMinimize,*/fpPublicChat, taPublicChat, fpChatPreset, fpChatEnter);
 
 /////////// PRIVATE CHAT
       // Sign
@@ -230,33 +233,36 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       // Buttons
       FlowPane fpPlayerSelect = new FlowPane(5,5);
          fpPlayerSelect.setAlignment(Pos.CENTER);
-         for(Opponent op:opponents)
+         synchronized(opponentsLock)
          {
-            int opponentId = op.getClientNumber();
-            Button btnOpponent = null;
-            
-            switch(opponentId)
+            for(Opponent op:opponents)
             {
-               case 1:
-                  btnOpponent = btnP1Chat;
-                  break;
-               case 2:
-                  btnOpponent = btnP2Chat;
-                  break;
-               case 3:
-                  btnOpponent = btnP3Chat;
-                  break;
-               case 4:
-                  btnOpponent = btnP4Chat;
-                  break;
-            }
-            
-            if(btnOpponent != null)
-            {
-               fpPlayerSelect.getChildren().add(btnOpponent);
-            }
-         } // for(Opponent)
-         showPrivateChat(opponents.get(0).getClientNumber());
+               int opponentId = op.getClientNumber();
+               Button btnOpponent = null;
+               
+               switch(opponentId)
+               {
+                  case 1:
+                     btnOpponent = btnP1Chat;
+                     break;
+                  case 2:
+                     btnOpponent = btnP2Chat;
+                     break;
+                  case 3:
+                     btnOpponent = btnP3Chat;
+                     break;
+                  case 4:
+                     btnOpponent = btnP4Chat;
+                     break;
+               }
+               
+               if(btnOpponent != null)
+               {
+                  fpPlayerSelect.getChildren().add(btnOpponent);
+               }
+            } // for(Opponent)
+            showPrivateChat(opponents.get(0).getClientNumber());
+         }
       
       // Logs
       StackPane spPrivateChat = new StackPane();
@@ -448,39 +454,39 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                               
                if(text.length() > 0)
                {
-                  taChatBox.appendText("\nYou: " + text);
+                  taPublicChat.appendText("\nYou: " + text);
                   sendChatMessageToServer(text);
                }
                break;
             case "GLHF":
-               taChatBox.appendText("\nYou: GLHF!");
+               taPublicChat.appendText("\nYou: GLHF!");
                sendChatMessageToServer("GLHF!");
                ButtonsSleep bsGLHF = new ButtonsSleep(btnGLHF, BUTTON_SLEEP);
                bsGLHF.start();
                break;
             case "GG":
-               taChatBox.appendText("\nYou: GG");
+               taPublicChat.appendText("\nYou: GG");
                sendChatMessageToServer("GG");
                ButtonsSleep bsGG = new ButtonsSleep(btnGG, BUTTON_SLEEP);
                bsGG.start();
                break;
             case "WP":
-               taChatBox.appendText("\nYou: Well Played!");
+               taPublicChat.appendText("\nYou: Well Played!");
                sendChatMessageToServer("Well Played!");
                ButtonsSleep bsWP = new ButtonsSleep(btnWP, BUTTON_SLEEP);
                bsWP.start();
                break;
             case "Player 1":
-               showPrivateChat(privateChatClientNumber);
+               showPrivateChat(1);
                break;
             case "Player 2":
-               showPrivateChat(privateChatClientNumber);
+               showPrivateChat(2);
                break;
             case "Player 3":
-               showPrivateChat(privateChatClientNumber);
+               showPrivateChat(3);
                break;
             case "Player 4":
-               showPrivateChat(privateChatClientNumber);
+               showPrivateChat(4);
                break;
             case "Send Private":
                String privateText = tfPrivateChatEnter.getText();
@@ -568,19 +574,34 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    
    public void showPrivateChat(int _chatId)
    {
-      showPrivateChat(_chatId, "");
+      showPrivateChat(_chatId, "", false);
    }
    
    public void showPrivateChat(int _chatId, String _message)
+   {
+      showPrivateChat(_chatId, _message, false);
+   }
+   
+   public void sendPrivateServerMessage(int _chatId, String _message)
+   {
+      showPrivateChat(_chatId, _message, true);
+   }
+   
+   public void showPrivateChat(int _chatId, String _message, boolean _serverMessage)
    {
       switch(_chatId)
       {
          case 1:
             
-            if(_message.length() > 0)
+            if(_message.length() > 0 && !_serverMessage)
             {
                taP1Chat.appendText("\nPlayer" + _chatId + ": " + _message);
             }
+            else if(_serverMessage)
+            {
+               taP1Chat.appendText("\nServer Message: " + _message);
+            }
+            
             privateChatClientNumber = 1;
             
             taP1Chat.setVisible(true);
@@ -595,11 +616,15 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             break;
          case 2:
          
-            if(_message.length() > 0)
+            if(_message.length() > 0 && !_serverMessage)
             {
                taP2Chat.appendText("\nPlayer" + _chatId + ": " + _message);
             }
-            
+            else if(_serverMessage)
+            {
+               taP2Chat.appendText("\nServer Message: " + _message);
+            }
+
             privateChatClientNumber = 2;
             
             taP1Chat.setVisible(false);
@@ -614,9 +639,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             break;
          case 3:
             
-            if(_message.length() > 0)
+            if(_message.length() > 0 && !_serverMessage)
             {
                taP3Chat.appendText("\nPlayer" + _chatId + ": " + _message);
+            }
+            else if(_serverMessage)
+            {
+               taP3Chat.appendText("\nServer Message: " + _message);
             }
             
             privateChatClientNumber = 3;
@@ -633,9 +662,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             break;
          case 4:
          
-            if(_message.length() > 0)
+            if(_message.length() > 0 && !_serverMessage)
             {
                taP4Chat.appendText("\nPlayer" + _chatId + ": " + _message);
+            }
+            else if(_serverMessage)
+            {
+               taP4Chat.appendText("\nServer Message: " + _message);
             }
             
             privateChatClientNumber = 4;
@@ -783,10 +816,15 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             {
                input = ois.readObject();
             }
-            catch(ConnectException ce)
+            catch(SocketException se)
             {
-               DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", ce + "");
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "Server went down", "You were disconnected");
                btnStart.setDisable(false);
+               for(Player p:opponentPlayers)
+               {
+                  p.hideCar();
+               }
+               taPublicChat.appendText("\n\nYou were disconnected from the server\n\n");
                error = true;
             }
             catch(ClassNotFoundException cnfe)
@@ -836,7 +874,10 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      try
                      {
                         Opponent op = (Opponent)ois.readObject();
-                        opponents.add(op);
+                        synchronized(opponentsLock)
+                        {
+                           opponents.add(op);
+                        }
                         //DisplayMessage.showAlert(stage, AlertType.INFORMATION, "INIT_OPPONENT: Opponent Info received", op + "");
                         //System.out.println("Player" + playerNumber + " INIT_OPPONENT: " + op);
                      }
@@ -862,19 +903,28 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
 
                      createGameScene();
                      // Create opponents as players
-                     for(Opponent op:opponents)
+                     synchronized(opponentsLock)
                      {
-                        Player plOp = new Player(gameClient, stage, op.getClientNumber(), op.getCarFileName(), op.getStartX(), op.getStartY(), op.getStartDegree(), TRACK_WIDTH, TRACK_HEIGHT);
-                        //Player plOp = new Player(stage, op.getClientNumber(), op.getCarFileName(), 0, 0, op.getStartDegree(), TRACK_WIDTH, TRACK_HEIGHT);
-                        opponentPlayers.add(plOp);
-                        //System.out.println(op);
+                        for(Opponent op:opponents)
+                        {
+                           Player plOp = new Player(gameClient, stage, op.getClientNumber(), op.getCarFileName(), op.getStartX(), op.getStartY(), op.getStartDegree(), TRACK_WIDTH, TRACK_HEIGHT);
+                           //Player plOp = new Player(stage, op.getClientNumber(), op.getCarFileName(), 0, 0, op.getStartDegree(), TRACK_WIDTH, TRACK_HEIGHT);
+                           synchronized(opponentPlayersLock)
+                           {
+                              opponentPlayers.add(plOp);
+                           }
+                           //System.out.println(op);
+                        }
                      }
                      
-                     for(Player p:opponentPlayers)
+                     synchronized(opponentPlayersLock)
                      {
-                        track.getChildren().add(p);
-                        //System.out.println(p);
-                        //System.out.println(p.getCoordinates());
+                        for(Player p:opponentPlayers)
+                        {
+                           track.getChildren().add(p);
+                           //System.out.println(p);
+                           //System.out.println(p.getCoordinates());
+                        }
                      }
                      track.getChildren().add(mainPlayer);
                      //System.out.println(mainPlayer.getCoordinates());
@@ -912,12 +962,15 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                            error = true;
                         }
                         
-                        for(Player p:opponentPlayers)
+                        synchronized(opponentPlayersLock)
                         {
-                           if(p.getPlayerNumber() == cs.getClientNumber() && cs != null)
+                           for(Player p:opponentPlayers)
                            {
-                              p.setCoordinates(cs.getX(), cs.getY(), cs.getDegree());
-                              //System.out.println(String.format("UC: X:%f  Y:%f  DEG:%f", cs.getX(), cs.getY(), cs.getDegree()));
+                              if(p.getPlayerNumber() == cs.getClientNumber() && cs != null)
+                              {
+                                 p.setCoordinates(cs.getX(), cs.getY(), cs.getDegree());
+                                 //System.out.println(String.format("UC: X:%f  Y:%f  DEG:%f", cs.getX(), cs.getY(), cs.getDegree()));
+                              }
                            }
                         }
                      }
@@ -946,7 +999,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      
                      String chatMessage = String.format("Player%d: %s", senderId, message);
                      
-                     taChatBox.appendText("\n" + chatMessage);
+                     taPublicChat.appendText("\n" + chatMessage);
                      break; // RECEIVE_MESSAGE
                   case "RECEIVE_PRIVATE_MESSAGE":
                      int privateSenderId = 0;
@@ -972,6 +1025,61 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      
                      showPrivateChat(privateSenderId, privateMessage);
                      break; // RECEIVE_PRIVATE_MESSAGE
+                  case "DISCONNECT_OPPONENT":
+                     //System.out.println("DISCONNECT_OPPONENT");
+                     int opponentToDisconnect = -1;
+                     synchronized(lock)
+                     {
+                        try
+                        {
+                           opponentToDisconnect = (Integer)ois.readObject();
+                        }
+                        catch(ClassNotFoundException cnfe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "RECEIVE_MESSAGE CNFE", cnfe + "");
+                           error = true;
+                        }
+                        catch(IOException ioe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "RECEIVE_MESSAGE IOE", ioe + "");
+                           error = true;
+                        }
+                     }
+                     
+                     if(opponentToDisconnect != -1)
+                     {
+                        synchronized(opponentsLock)
+                        {
+                           for(Opponent op:opponents)
+                           {
+                              if(op.getClientNumber() == opponentToDisconnect)
+                              {
+                                 opponents.remove(op);
+                                 //System.out.println("Removed Player" + op.getClientNumber());
+                                 break;
+                              }
+                           }
+                        }
+                        
+                        synchronized(opponentPlayersLock)
+                        {
+                           for(Player p:opponentPlayers)
+                           {
+                              if(p.getPlayerNumber() == opponentToDisconnect)
+                              {
+                                 p.hideCar();
+                                 opponentPlayers.remove(p);
+                              }
+                              break;
+                           }
+                        }
+                        
+                        String serverMessage = "Player" + opponentToDisconnect + " disconnected.";
+                        taPublicChat.appendText("Server Message: " + serverMessage);
+                        sendPrivateServerMessage(opponentToDisconnect, serverMessage);
+                     } // if opponent to disconnect exists
+                     break; // DISCONNECT_OPPONENT
+                     
                } // switch(command)
             } // if instanceof String
          } // while(true)

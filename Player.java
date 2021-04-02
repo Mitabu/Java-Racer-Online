@@ -151,6 +151,21 @@ public class Player extends Pane
       return String.format("Player%d   iX: %f   iY:%f", playerNumber, carImageView.getX(), carImageView.getY());
    }
    
+   public void hideCar()
+   {
+      Platform.runLater
+      (
+         new Runnable()
+         {
+            public void run()
+            {
+               carImageView.setVisible(false);
+               System.out.println("setVisible(false)");
+            }
+         }
+      );
+   }
+   
    public void setCoordinates(double _x, double _y, double _degree)
    {
       Platform.runLater

@@ -247,9 +247,12 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          }
          
          // Initialize Players
-         for(ClientThread cThread:clientThreads)
+         synchronized(clientThreadsLock)
          {
-            cThread.initializePlayer();
+            for(ClientThread cThread:clientThreads)
+            {
+               cThread.initializePlayer();
+            }
          }
          taLog.appendText("\nPlayers initialized...");
          
@@ -263,25 +266,34 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
 //         System.out.println("\nOpponent initialization\n");
          
          // Initialize Opponents
-         for(ClientThread cThread:clientThreads)
+         synchronized(clientThreadsLock)
          {
-            cThread.initializeOpponents();
+            for(ClientThread cThread:clientThreads)
+            {
+               cThread.initializeOpponents();
+            }
          }
          taLog.appendText("\nOpponents initialized...");
 //         System.out.println("\n");
          
          // Start client threads for listening
-         for(ClientThread cThread:clientThreads)
+         synchronized(clientThreadsLock)
          {
-            cThread.start();
+            for(ClientThread cThread:clientThreads)
+            {
+               cThread.start();
+            }
          }
          taLog.appendText("\nClient threads started...");
          
          // Start Game
-         for(ClientThread cThread:clientThreads)
+         synchronized(clientThreadsLock)
          {
-            ClientOutput co = new ClientOutput(cThread.getOos(), "START_GAME");
-            co.start();
+            for(ClientThread cThread:clientThreads)
+            {
+               ClientOutput co = new ClientOutput(cThread.getOos(), "START_GAME");
+               co.start();
+            }
          }
          taLog.appendText("\nSTART_GAME sent...");         
       } // run()
@@ -338,7 +350,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             }
             catch(SocketException se)
             {
-               DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", se + "");
+               //DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", se + "");
                error = true;
             }
             catch(ClassNotFoundException cnfe)
@@ -379,11 +391,14 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                      }
                      if(cs != null)
                      {
-                        for(ClientThread ct:clientThreads)
+                        synchronized(clientThreadsLock)
                         {
-                           if(ct.getClientNumber() != clientNumber)
+                           for(ClientThread ct:clientThreads)
                            {
-                              ct.updateOpponent(cs);
+                              if(ct.getClientNumber() != clientNumber)
+                              {
+                                 ct.updateOpponent(cs);
+                              }
                            }
                         }
                      }
@@ -411,11 +426,14 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                         }
                      }
                      
-                     for(ClientThread ct:clientThreads)
+                     synchronized(clientThreadsLock)
                      {
-                        if(ct.getClientNumber() != clientNumber)
+                        for(ClientThread ct:clientThreads)
                         {
-                           ct.receiveChatMessage(clientNumber, message);
+                           if(ct.getClientNumber() != clientNumber)
+                           {
+                              ct.receiveChatMessage(clientNumber, message);
+                           }
                         }
                      }
                      break; // CHAT_MESSAGE
@@ -444,11 +462,14 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                         }
                      }
                      
-                     for(ClientThread ct:clientThreads)
+                     synchronized(clientThreadsLock)
                      {
-                        if(ct.getClientNumber() == recepientNumber)
+                        for(ClientThread ct:clientThreads)
                         {
-                           ct.receivePrivateChatMessage(senderNumber, privateMessage);
+                           if(ct.getClientNumber() == recepientNumber)
+                           {
+                              ct.receivePrivateChatMessage(senderNumber, privateMessage);
+                           }
                         }
                      }
                      break; // PRIVATE_CHAT_MESSAGE
@@ -462,13 +483,29 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             {
                for(ClientThread ct:clientThreads)
                {
-                  if(ct.getClientNumber() == clientNumber)
+                  if(ct.getClientNumber() != this.getClientNumber())
                   {
-                     clientThreads.remove(ct);
+                     ct.disconnectOpponent(this.getClientNumber());
+                     //System.out.println("Sent Player" + ct.getClientNumber() + " opponent disconnection request.");
                   }
                }
             }
-         }   
+            
+            synchronized(clientThreadsLock)
+            {
+               for(ClientThread ct:clientThreads)
+               {
+                  if(ct.getClientNumber() == clientNumber)
+                  {
+                     clientThreads.remove(ct);
+                     //System.out.println("Removed client" + ct.getClientNumber());
+                     break;
+                  }
+               }
+            }
+            
+            taLog.appendText("\n\nPlayer" + clientNumber + " disconnected.");
+         } // if(error)   
       } // run()
       
       /** Initializes and record player data to the list on the server*/
@@ -581,7 +618,23 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             }
             catch(IOException ioe)
             {
-               DisplayMessage.showAlert(stage, AlertType.ERROR, "receiveChatMessage() IOE", ioe + "");
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "receivePrivateChatMessage() IOE", ioe + "");
+            }
+         }
+      }
+      
+      public void disconnectOpponent(int _opponentNumber)
+      {
+         synchronized(lock)
+         {
+            try
+            {
+               oos.writeObject("DISCONNECT_OPPONENT");
+               oos.writeObject(_opponentNumber);
+            }
+            catch(IOException ioe)
+            {
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "disconnectOpponent() IOE", ioe + "");
             }
          }
       }
