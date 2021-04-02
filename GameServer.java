@@ -171,16 +171,21 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          String tempLaps = tfNumOfLaps.getText();
          clients = new Client[numOfPlayers];
          
+         boolean isANumber = false;
          try
          {
             numOfLaps = Integer.parseInt(tempLaps);
+            isANumber = true;
          }
          catch(Exception e)
          {
             DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting game", "The value in the \"Number of Laps\" field is not a number.");
          }
          
-         startServer();
+         if(isANumber)
+         {
+            startServer();
+         }
       }
    }
    
@@ -505,6 +510,13 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             }
             
             taLog.appendText("\n\nPlayer" + clientNumber + " disconnected.");
+            
+            // if all clients disconnected stop the server
+            if(clientThreads.size() == 0)
+            {
+               //DisplayMessage.showAlert(stage, AlertType.INFORMATION, "All players left the game", "Stopping the server");
+               System.exit(0);
+            }
          } // if(error)   
       } // run()
       

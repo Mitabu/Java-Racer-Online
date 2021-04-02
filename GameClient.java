@@ -217,6 +217,24 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             fpChatEnter.setAlignment(Pos.CENTER);
             tfChatEnter.setPromptText("Message...");
             tfChatEnter.setPrefColumnCount(15);
+            tfChatEnter.setOnKeyPressed(new EventHandler<KeyEvent>()
+            {
+                @Override
+                public void handle(KeyEvent keyEvent)
+                {
+                    if (keyEvent.getCode() == KeyCode.ENTER)
+                    {
+                        String text = tfChatEnter.getText();
+                        tfChatEnter.clear();
+                                       
+                        if(text.length() > 0)
+                        {
+                           taPublicChat.appendText("\nYou: " + text);
+                           sendChatMessageToServer(text);
+                        }
+                    }
+                }
+            });
             Button btnChatEnter = new Button("Send");
             fpChatEnter.getChildren().addAll(tfChatEnter, btnChatEnter);
       
@@ -293,6 +311,20 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          fpPrivateChatEnter.setAlignment(Pos.CENTER);
          tfPrivateChatEnter.setPromptText("Message...");
          tfPrivateChatEnter.setPrefColumnCount(12);
+         tfPrivateChatEnter.setOnKeyPressed(new EventHandler<KeyEvent>()
+         {
+             @Override
+             public void handle(KeyEvent keyEvent)
+             {
+                 if (keyEvent.getCode() == KeyCode.ENTER)
+                 {
+                     String privateText = tfPrivateChatEnter.getText();
+                     tfPrivateChatEnter.clear();
+                              
+                     sendPrivateMessage(privateText);
+                 }
+             }
+         });
          fpPrivateChatEnter.getChildren().addAll(tfPrivateChatEnter, btnPrivateChatEnter);
          
       
@@ -492,28 +524,33 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                String privateText = tfPrivateChatEnter.getText();
                tfPrivateChatEnter.clear();
                               
-               if(privateText.length() > 0)
-               {
-                  switch(privateChatClientNumber)
-                  {
-                     case 1:
-                        taP1Chat.appendText("\nYou: " + privateText);
-                        break;
-                     case 2:
-                        taP2Chat.appendText("\nYou: " + privateText);
-                        break;
-                     case 3:
-                        taP3Chat.appendText("\nYou: " + privateText);
-                        break;
-                     case 4:
-                        taP4Chat.appendText("\nYou: " + privateText);
-                        break;
-                  }
-                  
-                  sendPrivateChatMessageToServer(privateChatClientNumber, privateText);
-               }
+               sendPrivateMessage(privateText);
                break;
          }
+      }
+   }
+   
+   public void sendPrivateMessage(String _privateText)
+   {
+      if(_privateText.length() > 0)
+      {
+         switch(privateChatClientNumber)
+         {
+            case 1:
+               taP1Chat.appendText("\nYou: " + _privateText);
+               break;
+            case 2:
+               taP2Chat.appendText("\nYou: " + _privateText);
+               break;
+            case 3:
+               taP3Chat.appendText("\nYou: " + _privateText);
+               break;
+            case 4:
+               taP4Chat.appendText("\nYou: " + _privateText);
+               break;
+         }
+         
+         sendPrivateChatMessageToServer(privateChatClientNumber, _privateText);
       }
    }
    
