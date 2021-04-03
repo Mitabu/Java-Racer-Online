@@ -105,6 +105,15 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    private int numOfLaps = 0;
    
    private Text tLaps = new Text("Lap: " + currentLap + "/" + numOfLaps);
+   
+      // Game Start
+   private Text tCountThree = new Text("3");
+   private Text tCountTwo = new Text("2");
+   private Text tCountOne = new Text("1");
+   private Text tStart = new Text("Start!");
+   private Text tFinish = new Text("Finish!");
+   private boolean gameStart = false;
+   
       // Chat
          // General
    private VBox rootChat = new VBox(5);
@@ -176,11 +185,28 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       // GameClient
       gameClient = this;
       
+      // CountDown
+      StackPane spCountDown = new StackPane();
+      tCountOne.setStyle("-fx-fill: white; -fx-font-size: 200px; -fx-font-weight: bold; -fx-stroke: black; -fx-stroke-width: 1;");
+      tCountTwo.setStyle("-fx-fill: white; -fx-font-size: 200px; -fx-font-weight: bold; -fx-stroke: black; -fx-stroke-width: 1;");
+      tCountThree.setStyle("-fx-fill: white; -fx-font-size: 200px; -fx-font-weight: bold; -fx-stroke: black; -fx-stroke-width: 1;");
+      tStart.setStyle("-fx-fill: white; -fx-font-size: 120px; -fx-font-weight: bold; -fx-stroke: black; -fx-stroke-width: 1;");
+      tFinish.setStyle("-fx-fill: white; -fx-font-size: 120px; -fx-font-weight: bold; -fx-stroke: black; -fx-stroke-width: 1;");
+      
+      tCountOne.setVisible(false);
+      tCountTwo.setVisible(false);
+      tCountThree.setVisible(false);
+      tStart.setVisible(false);
+      tFinish.setVisible(false);
+      
+      spCountDown.setAlignment(Pos.CENTER);
+      spCountDown.getChildren().addAll(tCountOne, tCountTwo, tCountThree, tStart, tFinish);
+      
       // Image initialization
       initImages();
       
       // Track stack pane
-      track.getChildren().add(imgViewTrack);
+      track.getChildren().addAll(imgViewTrack, spCountDown);
       
       // SET SCENES
       titleScreenScene = TitleScreen.getScene(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfServerIp, btnStart, tfColorSelect, carNameArray[carArrayIndex]);
@@ -408,13 +434,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             @Override
             public void handle(KeyEvent event) {
                switch (event.getCode()) {
-                  case W:    gas = true; 
+                  case W:    if(gameStart) {gas = true;} 
                      break;
-                  case S:    brake = true; 
+                  case S:    if(gameStart) {brake = true;}
                      break;
-                  case A:    turnLeft  = true; 
+                  case A:    if(gameStart) {turnLeft  = true;} 
                      break;
-                  case D:    turnRight  = true; 
+                  case D:    if(gameStart) {turnRight  = true;} 
                      break;
                }
             }
@@ -615,6 +641,105 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          }
          
          sendPrivateChatMessageToServer(privateChatClientNumber, _privateText);
+      }
+   }
+   
+   class WaitBeforeStart extends Thread
+   {
+      public void run()
+      {
+         Platform.runLater
+         (
+            new Runnable()
+            {
+               public void run()
+               {
+                  tCountOne.setVisible(false);
+                  tCountTwo.setVisible(false);
+                  tCountThree.setVisible(true);
+               }
+            }
+         );
+         try
+         {
+            Thread.sleep(1000);
+         }
+         catch(InterruptedException ie)
+         {
+            DisplayMessage.showAlert(stage, AlertType.ERROR, "WaitBeforeStart", ie + "");
+         }
+         Platform.runLater
+         (
+            new Runnable()
+            {
+               public void run()
+               {
+                  tCountOne.setVisible(false);
+                  tCountTwo.setVisible(true);
+                  tCountThree.setVisible(false);
+               }
+            }
+         );
+         try
+         {
+            Thread.sleep(1000);
+         }
+         catch(InterruptedException ie)
+         {
+            DisplayMessage.showAlert(stage, AlertType.ERROR, "WaitBeforeStart", ie + "");
+         }
+         Platform.runLater
+         (
+            new Runnable()
+            {
+               public void run()
+               {
+                  tCountOne.setVisible(true);
+                  tCountTwo.setVisible(false);
+                  tCountThree.setVisible(false);
+               }
+            }
+         );
+         try
+         {
+            Thread.sleep(1000);
+         }
+         catch(InterruptedException ie)
+         {
+            DisplayMessage.showAlert(stage, AlertType.ERROR, "WaitBeforeStart", ie + "");
+         }
+         Platform.runLater
+         (
+            new Runnable()
+            {
+               public void run()
+               {
+                  tCountOne.setVisible(false);
+                  tCountTwo.setVisible(false);
+                  tCountThree.setVisible(false);
+                  tStart.setVisible(true);
+                  gameStart = true;
+               }
+            }
+         );
+         try
+         {
+            Thread.sleep(500);
+         }
+         catch(InterruptedException ie)
+         {
+            DisplayMessage.showAlert(stage, AlertType.ERROR, "WaitBeforeStart", ie + "");
+         }
+         Platform.runLater
+         (
+            new Runnable()
+            {
+               public void run()
+               {
+                  tStart.setVisible(false);
+               }
+            }
+         );
       }
    }
    
@@ -1058,6 +1183,8 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                            }
                         }
                      );
+                     WaitBeforeStart wbs = new WaitBeforeStart();
+                     wbs.start();
                      break; // START_GAME
                   case "UPDATE_OPPONENT":
                      synchronized(lock)
@@ -1254,13 +1381,17 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      if(winnerNumber == playerNumber)
                      {
                         //System.out.println("I WON!");
-                        tLaps.setText("Congratulations, You won!");
+                        tLaps.setText("Finish!");
+                        tFinish.setText("Congratulations\nYou won! (*^ W ^*)");
+                        tFinish.setVisible(true);
                         checkPoints.get(checkPoints.size() - 1).setStyle("-fx-stroke: green;");
                      }
                      else
                      {
                         //System.out.println("I LOST :(");
-                        tLaps.setText("You lost ( ; _ ;)");
+                        tLaps.setText("Finish!");
+                        tFinish.setText("You lost ( ; _ ;)");
+                        tFinish.setVisible(true);
                      }
                      break;
                      
