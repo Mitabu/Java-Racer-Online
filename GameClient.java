@@ -94,7 +94,16 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    private double mainStartX = 0;
    private double mainStartY = 0;
    private double mainStartDegree = 0;
+      
+      // CheckPoints
+   private ArrayList<Line> checkPoints = new ArrayList<Line>();
+   private ArrayList<Double> checkPointCoordinatesX = new ArrayList<Double>();
+   private ArrayList<Double> checkPointCoordinatesY = new ArrayList<Double>();
    
+   private int currentCheckPoint = 0;
+   private int currentLap = 1;
+   
+   private Text tLaps = new Text("Lap: " + currentLap);
       // Chat
          // General
    private VBox rootChat = new VBox(5);
@@ -279,7 +288,12 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                   fpPlayerSelect.getChildren().add(btnOpponent);
                }
             } // for(Opponent)
-            showPrivateChat(opponents.get(0).getClientNumber());
+            
+            // Select a private chat to show
+            if(opponents.size() > 0)
+            {
+               showPrivateChat(opponents.get(0).getClientNumber());
+            }
          }
       
       // Logs
@@ -347,6 +361,22 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       btnP3Chat.setOnAction(this);
       btnP4Chat.setOnAction(this);
       
+      // Track UI
+      FlowPane fpLaps = new FlowPane();
+         fpLaps.setAlignment(Pos.TOP_LEFT);
+         tLaps.setStyle("-fx-fill: white; -fx-font-size: 40px; -fx-font-weight: bold; -fx-stroke: black; -fx-stroke-width: 1;");
+         fpLaps.getChildren().add(tLaps);
+      track.getChildren().add(fpLaps);
+      
+      // Track Check Points
+      for(Line l:checkPoints)
+      {
+         Pane p = new Pane();
+         p.getChildren().add(l);
+         p.setTranslateX(checkPointCoordinatesX.get(checkPoints.indexOf(l)));
+         p.setTranslateY(checkPointCoordinatesY.get(checkPoints.indexOf(l)));
+         track.getChildren().add(p);
+      }
       
       // Track focus request
       track.setOnMouseClicked(new EventHandler<MouseEvent>() {
@@ -525,6 +555,33 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                tfPrivateChatEnter.clear();
                               
                sendPrivateMessage(privateText);
+               break;
+            case "TEST":
+               Line cp1 = new Line(0, 0, 0, 145);
+               cp1.setStyle("-fx-stroke: red;");
+               mainPlayer = new Player(gameClient, stage, playerNumber, carFileArray[carArrayIndex], 150, 550, 180, TRACK_WIDTH, TRACK_HEIGHT);
+               Pane checkPane = new Pane();
+               checkPane.getChildren().add(cp1);
+               checkPane.setTranslateX(220);
+               checkPane.setTranslateY(680);
+               System.out.println("X: " + checkPane.getTranslateX() + "  Y: " + checkPane.getTranslateY());
+               
+               createGameScene();
+               track.getChildren().addAll(checkPane, mainPlayer);
+
+               // Show the game scene
+               Platform.runLater
+               (
+                  new Runnable()
+                  {
+                     public void run()
+                     {
+                        stage.setScene(gameScene);
+                        track.requestFocus();
+                        stage.show();
+                     }
+                  }
+               );
                break;
          }
       }
@@ -789,10 +846,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          // Request
          try
          {
-            synchronized(oosLock)
+            if(oos != null)
             {
-               oos.writeObject("UPDATE_COORDINATES");
-               oos.writeObject(cs);  
+               synchronized(oosLock)
+               {
+                  oos.writeObject("UPDATE_COORDINATES");
+                  oos.writeObject(cs);  
+               }
             }
          }
          catch(IOException ioe)
@@ -895,6 +955,19 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         mainStartY = (double)ois.readObject();
                         mainStartDegree = (double)ois.readObject();
                         //System.out.println("sX: " + mainStartX + "   sY: " + mainStartY);
+                     
+                        // Initialize check points
+                        CheckPoint[] cpArray = (CheckPoint[])ois.readObject();
+                        
+                        for(CheckPoint cp:cpArray)
+                        {
+                           double x = GameLogic.getLineX(cp);
+                           double y = GameLogic.getLineY(cp);
+                           checkPoints.add(new Line(0, 0, x, y));
+                           
+                           checkPointCoordinatesX.add(Math.min(cp.getX1(), cp.getX2()));
+                           checkPointCoordinatesY.add(Math.min(cp.getY1(), cp.getY2()));
+                        }
                      }
                      catch(ClassNotFoundException cnfe)
                      {
@@ -1034,9 +1107,17 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         }
                      }
                      
-                     String chatMessage = String.format("Player%d: %s", senderId, message);
-                     
-                     taPublicChat.appendText("\n" + chatMessage);
+                     if(senderId == -1)
+                     {
+                        String chatMessage = String.format("\nServer Message: " + message + "\n");
+                        taPublicChat.appendText("\n" + chatMessage);
+                     }
+                     else
+                     {
+                        String chatMessage = String.format("Player%d: %s", senderId, message);
+                        
+                        taPublicChat.appendText("\n" + chatMessage);
+                     }
                      break; // RECEIVE_MESSAGE
                   case "RECEIVE_PRIVATE_MESSAGE":
                      int privateSenderId = 0;
@@ -1112,10 +1193,55 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         }
                         
                         String serverMessage = "Player" + opponentToDisconnect + " disconnected.";
-                        taPublicChat.appendText("Server Message: " + serverMessage);
+                        taPublicChat.appendText("\nServer Message: " + serverMessage + "\n");
                         sendPrivateServerMessage(opponentToDisconnect, serverMessage);
                      } // if opponent to disconnect exists
                      break; // DISCONNECT_OPPONENT
+                  case "UPDATE_CHECKPOINT":
+                     checkPoints.get(currentCheckPoint).setStyle("-fx-stroke: green;");
+                     currentCheckPoint++;
+                     checkPoints.get(currentCheckPoint).setStyle("-fx-stroke: red;");
+                     break; // UPDATE_CHECKPOINT
+                  case "UPDATE_LAP":
+                     currentLap++;
+                     currentCheckPoint = 0;
+                     for(Line l:checkPoints)
+                     {
+                        l.setStyle("-fx-stroke: black;");
+                     }
+                     checkPoints.get(currentCheckPoint).setStyle("-fx-stroke: red;");
+                     tLaps.setText("Lap: " + currentLap);
+                     break;
+                  case "STOP_GAME":
+                     int winnerNumber = -1;
+                     synchronized(lock)
+                     {
+                        try
+                        {
+                           winnerNumber = (Integer)ois.readObject();
+                        }
+                        catch(ClassNotFoundException cnfe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "STOP_GAME CNFE", cnfe + "");
+                           error = true;
+                        }
+                        catch(IOException ioe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "STOP_GAME IOE", ioe + "");
+                           error = true;
+                        }
+                     }
+                     if(winnerNumber == playerNumber)
+                     {
+                        //System.out.println("I WON!");
+                        tLaps.setText("Congratulations, You won!");
+                     }
+                     else
+                     {
+                        //System.out.println("I LOST :(");
+                        tLaps.setText("You lost ( ; _ ;)");
+                     }
+                     break;
                      
                } // switch(command)
             } // if instanceof String

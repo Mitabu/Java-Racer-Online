@@ -26,6 +26,7 @@ public class TitleScreen
    private static Button btnExit = new Button("Exit");
    private static Button btnOptions = new Button("Options");
    private static Button btnStart = null;
+   private static Button btnTest = new Button("TEST");
    private static TextField tfServerIp = null;
          // Title Screen Scene
    private static Scene titleScreen;
@@ -64,7 +65,8 @@ public class TitleScreen
       // LABEL
       FlowPane fpLabel = new FlowPane();
          fpLabel.setAlignment(Pos.CENTER);
-         Label lbl = new Label("THIS GUI DESIGN IS A PROTOTYPE AND WILL BE CHANGED IN LATER DEVELOPMENT STAGES");
+         Label lbl = new Label("Java Racer Online");
+         lbl.setStyle("-fx-font-size: 40px; -fx-font-weight: bold");
          fpLabel.getChildren().add(lbl);
       // Server selection
       FlowPane fpServerIp = new FlowPane(5,5);
@@ -72,6 +74,11 @@ public class TitleScreen
          Label lblServerIp = new Label("Server IP: ");
          tfServerIp.setText("127.0.0.1");
          fpServerIp.getChildren().addAll(lblServerIp, tfServerIp);
+      // TEST
+      FlowPane fpTest = new FlowPane();
+         fpTest.setAlignment(Pos.CENTER);
+         fpTest.getChildren().add(btnTest);
+      
       // Start
       FlowPane fpStart = new FlowPane();
          fpStart.setAlignment(Pos.CENTER);
@@ -88,6 +95,7 @@ public class TitleScreen
          fpExit.getChildren().add(btnExit);
       
       // Set on action
+      btnTest.setOnAction(ae);
       btnStart.setOnAction(ae);
       btnOptions.setOnAction(ae);
       btnExit.setOnAction(ae);
@@ -95,7 +103,7 @@ public class TitleScreen
       // Root
       root = new VBox(20);
       root.setAlignment(Pos.CENTER);
-      root.getChildren().addAll(fpLabel, fpServerIp, fpStart, fpOptions, fpExit);
+      root.getChildren().addAll(fpLabel, fpServerIp, fpTest, fpStart, fpOptions, fpExit);
       
       // Scene
       titleScreen = new Scene(root, screenWidth, screenHeight);

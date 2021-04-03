@@ -65,7 +65,9 @@ public class Player extends Pane
       // Physics
    private double friction = 0.5; // Pixels/Frame
       // DEBUG
-   private Circle centerCircle = null;
+      //
+      //
+   //private Circle centerCircle = null;
    
    /**
    * Constructor
@@ -160,7 +162,6 @@ public class Player extends Pane
             public void run()
             {
                carImageView.setVisible(false);
-               System.out.println("setVisible(false)");
             }
          }
       );
@@ -180,22 +181,7 @@ public class Player extends Pane
             }
          }
       );
-   }
-//    public void setStartingPosition(double _x, double _y, double _degree)
-//    {
-//       // Set car centering values
-//       carCenterX = carWidth / 2;
-//       carCenterY = carHeight / 2;      
-//       
-//       double x = _x - carCenterX;
-//       double y = _y - carCenterY;
-//       carImageView.setTranslateX(x);
-//       carImageView.setTranslateY(y);
-//       carImageView.setRotate(_degree);
-//       carCenterLocation = new Position(_x, _y);
-//       wheelBase = new Position(_x, _y);
-//    }
-   
+   }   
    
    /**
    * Updates the position of the car
@@ -234,7 +220,11 @@ public class Player extends Pane
       else if(_velocity == 0)// Friction
       {
          // Direction of deceleration
-         if(currentVelocity > 0)
+         if(currentVelocity > -0.5 && currentVelocity < 0.5)
+         {
+            currentVelocity = 0;
+         }
+         else if(currentVelocity > 0)
          {
             currentVelocity -= friction;
          }
@@ -488,9 +478,10 @@ public class Player extends Pane
             {
                carImageView.setTranslateX(carCenterLocation.getX() - (carWidth / 2));
                carImageView.setTranslateY(carCenterLocation.getY() - (carHeight / 2));
-               //centerCircle.setTranslateX(carCenterLocation.getX() - carWidth);
-               //centerCircle.setTranslateY(carCenterLocation.getY() - carHeight);
+               //centerCircle.setTranslateX(carCenterLocation.getX() - (carWidth / 2));
+               //centerCircle.setTranslateY(carCenterLocation.getY() - (carHeight / 2));
                carImageView.setRotate(carHeadingDegree);
+               //System.out.println("X: " + centerCircle.getTranslateX() + "  Y: " + centerCircle.getTranslateY());
             }
          }
       );
