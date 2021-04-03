@@ -369,14 +369,21 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       track.getChildren().add(fpLaps);
       
       // Track Check Points
-      for(Line l:checkPoints)
+      if(checkPoints.size() > 0)
       {
-         Pane p = new Pane();
-         p.getChildren().add(l);
-         p.setTranslateX(checkPointCoordinatesX.get(checkPoints.indexOf(l)));
-         p.setTranslateY(checkPointCoordinatesY.get(checkPoints.indexOf(l)));
-         track.getChildren().add(p);
+         for(Line l:checkPoints)
+         {
+            Pane p = new Pane();
+               p.getChildren().add(l);
+               p.setTranslateX(checkPointCoordinatesX.get(checkPoints.indexOf(l)));
+               p.setTranslateY(checkPointCoordinatesY.get(checkPoints.indexOf(l)));
+               l.setVisible(false);
+            track.getChildren().add(p);
+         }  
       }
+      
+      checkPoints.get(currentCheckPoint).setStyle("-fx-stroke: red;");
+      checkPoints.get(currentCheckPoint).setVisible(true);
       
       // Track focus request
       track.setOnMouseClicked(new EventHandler<MouseEvent>() {
@@ -868,10 +875,6 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       // Synchronization
       private Object lock = new Object();
       
-      public Client()
-      {
-      }
-      
       public void run()
       {
          try
@@ -1173,7 +1176,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                               if(op.getClientNumber() == opponentToDisconnect)
                               {
                                  opponents.remove(op);
-                                 //System.out.println("Removed Player" + op.getClientNumber());
+                                 System.out.println("Removed Player" + op.getClientNumber());
                                  break;
                               }
                            }
@@ -1187,8 +1190,8 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                               {
                                  p.hideCar();
                                  opponentPlayers.remove(p);
+                                 break;
                               }
-                              break;
                            }
                         }
                         
@@ -1198,18 +1201,32 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      } // if opponent to disconnect exists
                      break; // DISCONNECT_OPPONENT
                   case "UPDATE_CHECKPOINT":
+                     if(currentCheckPoint - 1 >= 0) checkPoints.get(currentCheckPoint - 1).setVisible(false);
                      checkPoints.get(currentCheckPoint).setStyle("-fx-stroke: green;");
                      currentCheckPoint++;
                      checkPoints.get(currentCheckPoint).setStyle("-fx-stroke: red;");
+                     checkPoints.get(currentCheckPoint).setVisible(true);
                      break; // UPDATE_CHECKPOINT
                   case "UPDATE_LAP":
-                     currentLap++;
-                     currentCheckPoint = 0;
+                     // Remove the line before the finish line
+                     if(currentCheckPoint - 1 >= 0) checkPoints.get(currentCheckPoint - 1).setVisible(false);
+                     
+                     // Remove the finish line
+                     checkPoints.get(checkPoints.size() - 1).setVisible(false);
+                     
+                     // Make all other checkpoints black again
                      for(Line l:checkPoints)
                      {
                         l.setStyle("-fx-stroke: black;");
                      }
+                     
+                     // Make the first check point green and visible
+                     currentCheckPoint = 0;
                      checkPoints.get(currentCheckPoint).setStyle("-fx-stroke: red;");
+                     checkPoints.get(currentCheckPoint).setVisible(true);
+                     
+                     // Increment lap counter
+                     currentLap++;
                      tLaps.setText("Lap: " + currentLap);
                      break;
                   case "STOP_GAME":
@@ -1235,6 +1252,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      {
                         //System.out.println("I WON!");
                         tLaps.setText("Congratulations, You won!");
+                        checkPoints.get(checkPoints.size() - 1).setStyle("-fx-stroke: green;");
                      }
                      else
                      {

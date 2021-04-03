@@ -69,8 +69,6 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
    private double[] startY = {520, 450, 380, 310};
    private double startDegree = 180;
    
-   private boolean gameRunning = true;
-   
    
       // Check points
    private CheckPoint[] checkPointArray = 
@@ -85,6 +83,8 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
        new CheckPoint(225, 245, 150, 140), 
        new CheckPoint(85, 620, 205, 620)};
    private ArrayList<CheckPoint> checkPoints = new ArrayList<CheckPoint>();
+   
+   private boolean gameRunning = true;
    
    // Networking
       // Port
@@ -105,6 +105,14 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
       new EventHandler<WindowEvent>() {
          public void handle(WindowEvent evt)
          {
+            try
+            {
+               serverSocket.close();
+            }
+            catch(IOException ioe)
+            {
+               System.exit(1);
+            }
             System.exit(0);
          }
       });
@@ -382,17 +390,17 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             catch(SocketException se)
             {
                //DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", se + "");
-               error = true; gameRunning = false;
+               error = true; 
             }
             catch(ClassNotFoundException cnfe)
             {
                DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", cnfe + "");
-               error = true; gameRunning = false;
+               error = true; 
             }
             catch(IOException ioe)
             {
                DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", ioe + "");
-               error = true; gameRunning = false;
+               error = true; 
             }
             
             if(input instanceof String)
@@ -402,78 +410,83 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                switch(command)
                {
                   case "UPDATE_COORDINATES":
-                     if(gameRunning)
+                     CoordinateSet cs = null;
+                     synchronized(lock)
                      {
-                        CoordinateSet cs = null;
-                        synchronized(lock)
+                        try
                         {
-                           try
-                           {
-                              cs = (CoordinateSet)ois.readObject();
-                           }
-                           catch(ClassNotFoundException cnfe)
-                           {
-                              DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: UPDATE_COORDINATES", cnfe + "");
-                              error = true; gameRunning = false;
-                           }
-                           catch(IOException ioe)
-                           {
-                              DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: UPDATE_COORDINATES", ioe + "");
-                              error = true; gameRunning = false;
-                           }
+                           cs = (CoordinateSet)ois.readObject();
                         }
-                        if(cs != null)
+                        catch(ClassNotFoundException cnfe)
                         {
-                           // Send coordinates to opponents
-                           synchronized(clientThreadsLock)
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: UPDATE_COORDINATES", cnfe + "");
+                           error = true; 
+                        }
+                        catch(IOException ioe)
+                        {
+                           DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: UPDATE_COORDINATES", ioe + "");
+                           error = true; 
+                        }
+                     }
+                     if(cs != null)
+                     {
+                        // Send coordinates to opponents
+                        synchronized(clientThreadsLock)
+                        {
+                           for(ClientThread ct:clientThreads)
                            {
-                              for(ClientThread ct:clientThreads)
+                              if(ct.getClientNumber() != clientNumber)
                               {
-                                 if(ct.getClientNumber() != clientNumber)
-                                 {
-                                    ct.updateOpponent(cs);
-                                 }
+                                 ct.updateOpponent(cs);
                               }
                            }
-                           
-                           // Check if passed a check point
-                           if(GameLogic.isIntersect(new CheckPoint(prevX, prevY, cs.getX(), cs.getY()),  checkPoints.get(currentCheckPoint))  && gameRunning)
+                        }
+                        
+                        // Check if passed a check point
+                        if(GameLogic.isIntersect(new CheckPoint(prevX + 20, prevY + 35, cs.getX() + 20, cs.getY() + 35),  checkPoints.get(currentCheckPoint)))
+                        {
+                           prevX = cs.getX();
+                           prevY = cs.getY();
+                           synchronized(lock)
                            {
-                              synchronized(lock)
+                              try
                               {
-                                 try
+                                 if(currentCheckPoint == checkPoints.size() - 1 && gameRunning)
                                  {
-                                    if(currentCheckPoint == checkPoints.size() - 1)
+                                    currentCheckPoint = 0;
+                                    currentLap++;
+                                    if(currentLap > numOfLaps && gameRunning)
                                     {
-                                       currentCheckPoint = 0;
-                                       currentLap++;
-                                       if(currentLap > numOfLaps)
+                                       for(ClientThread ct:clientThreads)
                                        {
-                                          for(ClientThread ct:clientThreads)
-                                          {
-                                             ct.stopGame(clientNumber);
-                                             ct.receiveChatMessage(-1, "Game Over\nPlayer" + clientNumber + " won the race!");
-                                             gameRunning = false;
-                                          }
-                                       }
-                                       else
-                                       {
-                                          oos.writeObject("UPDATE_LAP");
+                                          gameRunning = false;
+                                          ct.stopGame(clientNumber);
+                                          ct.receiveChatMessage(-1, "Game Over\nPlayer" + clientNumber + " won the race!");
+                                          taLog.appendText("\n\nGame Over\nPlayer" + clientNumber + " won the race!");
                                        }
                                     }
                                     else
                                     {
-                                       oos.writeObject("UPDATE_CHECKPOINT");
-                                       currentCheckPoint++;
+                                       oos.writeObject("UPDATE_LAP");
                                     }
                                  }
-                                 catch(IOException ioe)
+                                 else
                                  {
-                                    DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: UPDATE_COORDINATES (check points)", ioe + "");
-                                    error = true; gameRunning = false;
+                                    oos.writeObject("UPDATE_CHECKPOINT");
+                                    currentCheckPoint++;
                                  }
                               }
-                           }
+                              catch(IOException ioe)
+                              {
+                                 DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: UPDATE_COORDINATES (check points)", ioe + "");
+                                 error = true;
+                              }
+                              catch(Exception e)
+                              {
+                                 DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: UPDATE_COORDINATES (check points)", e + "");
+                                 System.out.println("AM I HERE?");
+                              }
+                           } // synchronized(lock)
                         }
                      }
                      break; // UPDATE_COORDINATES
@@ -491,12 +504,12 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                         catch(ClassNotFoundException cnfe)
                         {
                            DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: CHAT_MESSAGE", cnfe + "");
-                           error = true; gameRunning = false; gameRunning = false;
+                           error = true;
                         }
                         catch(IOException ioe)
                         {
                            DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: CHAT_MESSAGE", ioe + "");
-                           error = true; gameRunning = false;
+                           error = true;
                         }
                      }
                      
@@ -527,12 +540,12 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                         catch(ClassNotFoundException cnfe)
                         {
                            DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: PRIVATE_CHAT_MESSAGE", cnfe + "");
-                           error = true; gameRunning = false;
+                           error = true;
                         }
                         catch(IOException ioe)
                         {
                            DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: PRIVATE_CHAT_MESSAGE", ioe + "");
-                           error = true; gameRunning = false;
+                           error = true;
                         }
                      }
                      
@@ -576,6 +589,17 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                      break;
                   }
                }
+            }
+            
+            try
+            {
+               this.oos.close();
+               this.ois.close();
+            }
+            catch(IOException ioe)
+            {
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: PRIVATE_CHAT_MESSAGE", ioe + "");
+               error = true;
             }
             
             taLog.appendText("\n\nPlayer" + clientNumber + " disconnected.");
