@@ -28,6 +28,12 @@ public class TitleScreen
    private static Button btnStart = null;
    private static Button btnTest = new Button("TEST");
    private static TextField tfServerIp = null;
+         // Car Color Select
+   private static FlowPane fpColorSelect;
+   private static Button btnPrev = new Button("Prev. color");
+   private static TextField tfColorSelect = null;
+   private static String selectedColor;
+   private static Button btnNext = new Button("Next color");
          // Title Screen Scene
    private static Scene titleScreen;
    private static int screenWidth;
@@ -43,7 +49,7 @@ public class TitleScreen
    * @param _screenWidth the width of the application window in pixels
    * @param _screenHeight the height of the application window in pixels
    */
-   public static Scene getScene(EventHandler<ActionEvent> _ae, int _screenWidth, int _screenHeight, TextField _tfServerIp, Button _btnStart)
+   public static Scene getScene(EventHandler<ActionEvent> _ae, int _screenWidth, int _screenHeight, TextField _tfServerIp, Button _btnStart, TextField _tfColorSelect, String _selectedColor)
    {
       // Set scene parameters
       ae = _ae;
@@ -52,6 +58,8 @@ public class TitleScreen
       
       // Get elements from the main class
       tfServerIp = _tfServerIp;
+      tfColorSelect = _tfColorSelect;
+      selectedColor = _selectedColor;
       btnStart = _btnStart;
       
       createTitleScreen();
@@ -85,9 +93,22 @@ public class TitleScreen
          fpStart.getChildren().add(btnStart);
          
       // Options
-      FlowPane fpOptions = new FlowPane();
-         fpOptions.setAlignment(Pos.CENTER);
-         fpOptions.getChildren().add(btnOptions);
+      //FlowPane fpOptions = new FlowPane();
+      //   fpOptions.setAlignment(Pos.CENTER);
+      //   fpOptions.getChildren().add(btnOptions);
+      
+      // Color Select
+      VBox vbColorSelect = new VBox(3);
+         FlowPane fpColorSelectLabel = new FlowPane();
+         Label lblColorSelect = new Label("Car Color");
+         fpColorSelectLabel.setAlignment(Pos.CENTER);
+         fpColorSelectLabel.getChildren().add(lblColorSelect);
+         fpColorSelect = new FlowPane(5, 5);
+         fpColorSelect.setAlignment(Pos.CENTER);
+         tfColorSelect.setDisable(true);
+         tfColorSelect.setText(selectedColor);
+         fpColorSelect.getChildren().addAll(btnPrev, tfColorSelect, btnNext);
+      vbColorSelect.getChildren().addAll(fpColorSelectLabel, fpColorSelect);
       
       // Exit
       FlowPane fpExit = new FlowPane();
@@ -97,13 +118,15 @@ public class TitleScreen
       // Set on action
       btnTest.setOnAction(ae);
       btnStart.setOnAction(ae);
+      btnPrev.setOnAction(ae);
+      btnNext.setOnAction(ae);
       btnOptions.setOnAction(ae);
       btnExit.setOnAction(ae);
       
       // Root
       root = new VBox(20);
       root.setAlignment(Pos.CENTER);
-      root.getChildren().addAll(fpLabel, fpServerIp, fpTest, fpStart, fpOptions, fpExit);
+      root.getChildren().addAll(fpLabel, fpServerIp, fpTest, fpStart, /*fpOptions,*/ vbColorSelect, fpExit);
       
       // Scene
       titleScreen = new Scene(root, screenWidth, screenHeight);

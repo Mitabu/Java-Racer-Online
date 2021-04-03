@@ -443,7 +443,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                         }
                         
                         // Check if passed a check point
-                        if(GameLogic.isIntersect(new CheckPoint(prevX + 20, prevY + 35, cs.getX() + 20, cs.getY() + 35),  checkPoints.get(currentCheckPoint)))
+                        if(gameRunning && GameLogic.isIntersect(new CheckPoint(prevX + 20, prevY + 35, cs.getX() + 20, cs.getY() + 35),  checkPoints.get(currentCheckPoint)))
                         {
                            prevX = cs.getX();
                            prevY = cs.getY();
@@ -620,6 +620,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          {
             oos.writeObject("INIT_PLAYER");
             oos.writeObject(this.clientNumber);
+            oos.writeObject(numOfLaps);
             
             String carFileName = (String)ois.readObject();
             

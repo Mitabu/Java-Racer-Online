@@ -24,13 +24,13 @@ public class Options
    private static VBox root;
          // GUI
                // Car Color Select
-   private static FlowPane fpBack;
+   private static FlowPane fpColorSelect;
    private static Button btnPrev = new Button("Prev. color");
    private static TextField tfColorSelect = null;
    private static String selectedColor;
    private static Button btnNext = new Button("Next color");
                // Back
-   private static FlowPane fpColorSelect;
+   private static FlowPane fpBack;
    private static Button btnBack = new Button("Back to Title");
          // Title Screen Scene
    private static Scene options;

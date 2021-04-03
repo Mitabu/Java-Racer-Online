@@ -102,8 +102,9 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    
    private int currentCheckPoint = 0;
    private int currentLap = 1;
+   private int numOfLaps = 0;
    
-   private Text tLaps = new Text("Lap: " + currentLap);
+   private Text tLaps = new Text("Lap: " + currentLap + "/" + numOfLaps);
       // Chat
          // General
    private VBox rootChat = new VBox(5);
@@ -182,14 +183,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       track.getChildren().add(imgViewTrack);
       
       // SET SCENES
-      titleScreenScene = TitleScreen.getScene(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfServerIp, btnStart);
-      optionsObject = new Options(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfColorSelect, carNameArray[carArrayIndex]);
-      optionsScene = optionsObject.getScene();
+      titleScreenScene = TitleScreen.getScene(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfServerIp, btnStart, tfColorSelect, carNameArray[carArrayIndex]);
+      //optionsObject = new Options(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfColorSelect, carNameArray[carArrayIndex]);
+      //optionsScene = optionsObject.getScene();
       
       stage.setScene(titleScreenScene);
       stage.setResizable(false);
-      stage.setX(20);
-      stage.setY(20);
+      stage.centerOnScreen();
       stage.show();
    }
    
@@ -379,11 +379,11 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                p.setTranslateY(checkPointCoordinatesY.get(checkPoints.indexOf(l)));
                l.setVisible(false);
             track.getChildren().add(p);
-         }  
+         }
+         
+         checkPoints.get(currentCheckPoint).setStyle("-fx-stroke: red;");
+         checkPoints.get(currentCheckPoint).setVisible(true);
       }
-      
-      checkPoints.get(currentCheckPoint).setStyle("-fx-stroke: red;");
-      checkPoints.get(currentCheckPoint).setVisible(true);
       
       // Track focus request
       track.setOnMouseClicked(new EventHandler<MouseEvent>() {
@@ -950,6 +950,9 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         // Player initialization
                            // RECEIVE player number
                         playerNumber = (Integer)ois.readObject();
+                           // RECEIVE number of laps in the race
+                        numOfLaps = (Integer)ois.readObject();
+                        tLaps.setText("Lap: " + currentLap + "/" + numOfLaps);
                         //DisplayMessage.showAlert(stage, AlertType.INFORMATION, "CONNECTED TO THE SERVER", "YAY  " + playerNumber);
                            // SEND car file name
                         oos.writeObject(carFileArray[carArrayIndex]);
@@ -1227,7 +1230,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      
                      // Increment lap counter
                      currentLap++;
-                     tLaps.setText("Lap: " + currentLap);
+                     tLaps.setText("Lap: " + currentLap + "/" + numOfLaps);
                      break;
                   case "STOP_GAME":
                      int winnerNumber = -1;
