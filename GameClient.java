@@ -249,6 +249,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             taPublicChat.setPrefWidth(250);
             taPublicChat.setPrefHeight(400);
             taPublicChat.setEditable(false);
+            taPublicChat.setWrapText(true);
             taPublicChat.setText("Public Chat Room\n");
             
          FlowPane fpChatPreset = new FlowPane(5,5);
@@ -344,21 +345,25 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             taP1Chat.setPrefWidth(CHAT_WIDTH);
             taP1Chat.setPrefHeight(200);
             taP1Chat.setEditable(false);
+            taP1Chat.setWrapText(true);
             taP1Chat.setText(btnP1Text + " Private Chat Room\n");
             
             taP2Chat.setPrefWidth(CHAT_WIDTH);
             taP2Chat.setPrefHeight(200);
             taP2Chat.setEditable(false);
+            taP2Chat.setWrapText(true);
             taP2Chat.setText(btnP2Text + " Private Chat Room\n");
          
             taP3Chat.setPrefWidth(CHAT_WIDTH);
             taP3Chat.setPrefHeight(200);
             taP3Chat.setEditable(false);
+            taP3Chat.setWrapText(true);
             taP3Chat.setText(btnP3Text + " Private Chat Room\n");
          
             taP4Chat.setPrefWidth(CHAT_WIDTH);
             taP4Chat.setPrefHeight(200);
             taP4Chat.setEditable(false);
+            taP4Chat.setWrapText(true);
             taP4Chat.setText(btnP4Text + " Private Chat Room\n");
       spPrivateChat.getChildren().addAll(taP1Chat, taP2Chat, taP3Chat, taP4Chat);
       

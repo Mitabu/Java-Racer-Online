@@ -174,6 +174,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          taLog.setPrefWidth(WINDOW_WIDTH);
          taLog.setPrefHeight(WINDOW_HEIGHT - 50);
          taLog.setEditable(false);
+         taLog.setWrapText(true);
       root.getChildren().add(taLog);
       
       // setOnAction
