@@ -5,7 +5,7 @@ import java.net.*;
 
 /**
 *  @author Artem Polkovnikov
-*  @version 31.03.2021
+*  @version 04.04.2021
 */
 
 public class Client
@@ -15,6 +15,7 @@ public class Client
    private ObjectOutputStream oos = null;
    private ObjectInputStream ois = null;
    private int clientNumber;
+   private String clientName;
    private String carFileName;
    private double startX;
    private double startY;
@@ -24,18 +25,20 @@ public class Client
    {
       
    }
-   public Client(Socket _cSocket, ObjectOutputStream _oos, ObjectInputStream _ois, int _clientNumber)
+   public Client(Socket _cSocket, ObjectOutputStream _oos, ObjectInputStream _ois, int _clientNumber, String _clientName)
    {
       this.cSocket = _cSocket;
       this.oos = _oos;
       this.ois = _ois;
       this.clientNumber = _clientNumber;
+      this.clientName = _clientName;
    }
    
    public Socket getClientSocket() {return this.cSocket;}
    public ObjectOutputStream getOos() {return this.oos;}
    public ObjectInputStream getOis() {return this.ois;}
    public int getClientNumber() {return this.clientNumber;}
+   public String getClientName() {return this.clientName;}
    public String getCarFileName() {return this.carFileName;}
    public double getStartX() {return this.startX;}
    public double getStartY() {return this.startY;}

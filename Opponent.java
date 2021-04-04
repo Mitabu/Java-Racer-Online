@@ -12,14 +12,16 @@ public class Opponent implements Serializable
 {
    // Attributes
    private int clientNumber;
+   private String clientName;
    private String carFileName;
    private double startX;
    private double startY;
    private double startDegree;
    
-   public Opponent(int _clientNumber, String _carFileName, double _sx, double _sy, double _sd)
+   public Opponent(int _clientNumber, String _clientName, String _carFileName, double _sx, double _sy, double _sd)
    {
       this.clientNumber = _clientNumber;
+      this.clientName = _clientName;
       this.carFileName = _carFileName;
       this.startX = _sx;
       this.startY = _sy;
@@ -27,6 +29,7 @@ public class Opponent implements Serializable
    }
    
    public int getClientNumber() {return this.clientNumber;}
+   public String getClientName() {return this.clientName;}
    public String getCarFileName() {return this.carFileName;}
    public double getStartX() {return this.startX;}
    public double getStartY() {return this.startY;}

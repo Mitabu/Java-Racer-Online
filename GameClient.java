@@ -50,10 +50,12 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             // Title Screen
    private Scene titleScreenScene;
    private TextField tfServerIp = new TextField();
+   private TextField tfServerPassword = new TextField();
+   private TextField tfClientName = new TextField();
    private Button btnStart = new Button("Start");
             // Options
-   private Scene optionsScene;
-   private Options optionsObject;
+   //private Scene optionsScene;
+   //private Options optionsObject;
    private TextField tfColorSelect = new TextField();
             // Game
    private Scene gameScene;
@@ -144,6 +146,11 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    private Button btnP3Chat = new Button(playerNames[2]);
    private Button btnP4Chat = new Button(playerNames[3]);
    
+   private String btnP1Text = null;
+   private String btnP2Text = null;
+   private String btnP3Text = null;
+   private String btnP4Text = null;
+   
    private int privateChatClientNumber = 1;
    
    private TextField tfPrivateChatEnter = new TextField();
@@ -209,7 +216,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       track.getChildren().addAll(imgViewTrack, spCountDown);
       
       // SET SCENES
-      titleScreenScene = TitleScreen.getScene(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfServerIp, btnStart, tfColorSelect, carNameArray[carArrayIndex]);
+      titleScreenScene = TitleScreen.getScene(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfServerIp, tfServerPassword, tfClientName, btnStart, tfColorSelect, carNameArray[carArrayIndex]);
       //optionsObject = new Options(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfColorSelect, carNameArray[carArrayIndex]);
       //optionsScene = optionsObject.getScene();
       
@@ -292,20 +299,29 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             {
                int opponentId = op.getClientNumber();
                Button btnOpponent = null;
+               String btnText = op.getClientName() + "#" + op.getClientNumber();
                
                switch(opponentId)
                {
                   case 1:
                      btnOpponent = btnP1Chat;
+                     btnOpponent.setText(btnText);
+                     btnP1Text = btnText;
                      break;
                   case 2:
                      btnOpponent = btnP2Chat;
+                     btnOpponent.setText(btnText);
+                     btnP2Text = btnText;
                      break;
                   case 3:
                      btnOpponent = btnP3Chat;
+                     btnOpponent.setText(btnText);
+                     btnP3Text = btnText;
                      break;
                   case 4:
                      btnOpponent = btnP4Chat;
+                     btnOpponent.setText(btnText);
+                     btnP4Text = btnText;
                      break;
                }
                
@@ -328,22 +344,22 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             taP1Chat.setPrefWidth(CHAT_WIDTH);
             taP1Chat.setPrefHeight(200);
             taP1Chat.setEditable(false);
-            taP1Chat.setText("Player1 Private Chat Room\n");
+            taP1Chat.setText(btnP1Text + " Private Chat Room\n");
             
             taP2Chat.setPrefWidth(CHAT_WIDTH);
             taP2Chat.setPrefHeight(200);
             taP2Chat.setEditable(false);
-            taP2Chat.setText("Player2 Private Chat Room\n");
+            taP2Chat.setText(btnP2Text + " Private Chat Room\n");
          
             taP3Chat.setPrefWidth(CHAT_WIDTH);
             taP3Chat.setPrefHeight(200);
             taP3Chat.setEditable(false);
-            taP3Chat.setText("Player3 Private Chat Room\n");
+            taP3Chat.setText(btnP3Text + " Private Chat Room\n");
          
             taP4Chat.setPrefWidth(CHAT_WIDTH);
             taP4Chat.setPrefHeight(200);
             taP4Chat.setEditable(false);
-            taP4Chat.setText("Player4 Private Chat Room\n");
+            taP4Chat.setText(btnP4Text + " Private Chat Room\n");
       spPrivateChat.getChildren().addAll(taP1Chat, taP2Chat, taP3Chat, taP4Chat);
       
       // Send private
@@ -503,10 +519,33 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       {
          String command = ((Button)source).getText();
          
+         String[] parts = command.split("#");
+         if(parts.length > 1)
+         {
+            command = parts[parts.length - 1];
+            
+            switch(command)
+            {
+               case "1":
+                  command = "Player 1";
+                  break;
+               case "2":
+                  command = "Player 2";
+                  break;
+               case "3":
+                  command = "Player 3";
+                  break;
+               case "4":
+                  command = "Player 4";
+                  break;
+            }
+         }
+         
          switch(command)
          {
             case "Start":
-               if(tfServerIp.getText().length() > 1)
+               if(tfServerIp.getText().length() > 0 &&
+                  tfClientName.getText().length() > 0)
                {
                   Client c = new Client();
                   c.start();
@@ -514,13 +553,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                }
                else
                {
-                  DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting the game", "Server IP field is empty. Please, enter a Server IP.");
+                  DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting the game", "One or multiple log in fields are missing information");
                }
                break;
-            case "Options":
-               stage.setScene(optionsScene);
-               stage.show();
-               break;
+            //case "Options":
+            //   stage.setScene(optionsScene);
+            //   stage.show();
+            //   break;
             case "Prev. color":
                if(carArrayIndex > 0)
                {
@@ -815,13 +854,24 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    
    public void showPrivateChat(int _chatId, String _message, boolean _serverMessage)
    {
+      Opponent publicChatOp = null;
+      for(Opponent op:opponents)
+      {
+         if(op.getClientNumber() == _chatId)
+         {
+            publicChatOp = op;
+         }
+      }
+      
+      String chatMessage = String.format("\n%s#%d: %s", publicChatOp.getClientName(), publicChatOp.getClientNumber(), _message);
+      
       switch(_chatId)
       {
          case 1:
             
             if(_message.length() > 0 && !_serverMessage)
             {
-               taP1Chat.appendText("\nPlayer" + _chatId + ": " + _message);
+               taP1Chat.appendText(chatMessage);
             }
             else if(_serverMessage)
             {
@@ -844,7 +894,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          
             if(_message.length() > 0 && !_serverMessage)
             {
-               taP2Chat.appendText("\nPlayer" + _chatId + ": " + _message);
+               taP2Chat.appendText(chatMessage);
             }
             else if(_serverMessage)
             {
@@ -867,7 +917,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             
             if(_message.length() > 0 && !_serverMessage)
             {
-               taP3Chat.appendText("\nPlayer" + _chatId + ": " + _message);
+               taP3Chat.appendText(chatMessage);
             }
             else if(_serverMessage)
             {
@@ -890,7 +940,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          
             if(_message.length() > 0 && !_serverMessage)
             {
-               taP4Chat.appendText("\nPlayer" + _chatId + ": " + _message);
+               taP4Chat.appendText(chatMessage);
             }
             else if(_serverMessage)
             {
@@ -1002,6 +1052,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       
       public void run()
       {
+         boolean loggedIn = false;
          try
          {
             // Open socket for server connection
@@ -1010,11 +1061,25 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             // Input/output with the server																
             oos = new ObjectOutputStream(socket.getOutputStream());
             ois = new ObjectInputStream(socket.getInputStream());
+         
+            oos.writeObject(tfServerPassword.getText());
+            String login = (String)ois.readObject();
+            
+            if(login.equals("LOGGED_IN"))
+            {
+               loggedIn = true;
+               DisplayMessage.showAlert(stage, AlertType.INFORMATION, "Connected to the server", "The game will start as soon as all players connect to the server");
+            }
+            else 
+            {
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", "Wrong Password");
+               btnStart.setDisable(false);
+            }
          }
-         //catch(ClassNotFoundException cnfe)
-         //{
-         //   DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", cnfe + "");
-         //}
+         catch(ClassNotFoundException cnfe)
+         {
+            DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", cnfe + "");
+         }
          catch(UnknownHostException uhe)
          {
             DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", uhe + "");
@@ -1032,7 +1097,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          }
          
          // Start listening to server inputs
-         while(!error)
+         while(!error && loggedIn)
          {
             Object input = null;
             
@@ -1078,9 +1143,10 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                            // RECEIVE number of laps in the race
                         numOfLaps = (Integer)ois.readObject();
                         tLaps.setText("Lap: " + currentLap + "/" + numOfLaps);
-                        //DisplayMessage.showAlert(stage, AlertType.INFORMATION, "CONNECTED TO THE SERVER", "YAY  " + playerNumber);
                            // SEND car file name
                         oos.writeObject(carFileArray[carArrayIndex]);
+                           // SEND nickname
+                        oos.writeObject(tfClientName.getText());
                            // RECEIVE starting coordintaes
                         mainStartX = (double)ois.readObject();
                         mainStartY = (double)ois.readObject();
@@ -1247,7 +1313,16 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      }
                      else
                      {
-                        String chatMessage = String.format("Player%d: %s", senderId, message);
+                        Opponent publicChatOp = null;
+                        for(Opponent op:opponents)
+                        {
+                           if(op.getClientNumber() == senderId)
+                           {
+                              publicChatOp = op;
+                           }
+                        }
+                        
+                        String chatMessage = String.format("%s#%d: %s", publicChatOp.getClientName(), publicChatOp.getClientNumber(), message);
                         
                         taPublicChat.appendText("\n" + chatMessage);
                      }
@@ -1299,14 +1374,16 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      
                      if(opponentToDisconnect != -1)
                      {
+                        Opponent disconnectedOp = null;
                         synchronized(opponentsLock)
                         {
                            for(Opponent op:opponents)
                            {
                               if(op.getClientNumber() == opponentToDisconnect)
                               {
+                                 disconnectedOp = op;
                                  opponents.remove(op);
-                                 System.out.println("Removed Player" + op.getClientNumber());
+                                 //System.out.println("Removed " + op.getClientName() + "#" + op.getClientNumber());
                                  break;
                               }
                            }
@@ -1325,7 +1402,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                            }
                         }
                         
-                        String serverMessage = "Player" + opponentToDisconnect + " disconnected.";
+                        String serverMessage = disconnectedOp.getClientName() + "#" + disconnectedOp.getClientNumber() + " disconnected.";
                         taPublicChat.appendText("\nServer Message: " + serverMessage + "\n");
                         sendPrivateServerMessage(opponentToDisconnect, serverMessage);
                      } // if opponent to disconnect exists
@@ -1400,4 +1477,8 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          } // while(true)
       } // run()
    } // Client
+   
+   public static void main(String[] args) {
+        launch(args);
+    }
 }

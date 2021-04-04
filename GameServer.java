@@ -39,9 +39,12 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
    private VBox root = new VBox(5);
       // Server address
    private FlowPane fpTop = new FlowPane(5,5);
-   private Label lblServerIp = new Label("Server IP: ");
+   private FlowPane fpServerPassword = new FlowPane(5,5);
+   //private Label lblServerIp = new Label("Server IP: ");
    private TextField tfServerIp = new TextField();
+   private TextField tfServerPassword = new TextField();
    private String serverIp = null;
+   private String serverPassword = null;
       // Game settings
    private VBox vbSettings = new VBox(5);
          // Number of Players
@@ -109,7 +112,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             {
                serverSocket.close();
             }
-            catch(IOException ioe)
+            catch(Exception e)
             {
                System.exit(1);
             }
@@ -121,8 +124,9 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
       Collections.addAll(checkPoints, checkPointArray);
       
       // Top line
+         Label lblServerIp = new Label("Server IP: ");
          tfServerIp.setPrefColumnCount(10);
-         tfServerIp.setEditable(false);
+         tfServerIp.setDisable(true);
          
          serverIp = "IP NOT FOUND";
          try
@@ -138,6 +142,13 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          fpTop.getChildren().addAll(lblServerIp, tfServerIp);
       root.getChildren().add(fpTop);
       
+      // Password
+         Label lblServerPassvord = new Label("Password(Optional): ");
+         tfServerPassword.setPrefColumnCount(10);
+         tfServerPassword.setPromptText("Password(Optional)");
+         fpServerPassword.getChildren().addAll(lblServerPassvord, tfServerPassword);
+      root.getChildren().add(fpServerPassword);
+      
       // Setttings
          // Number of players
       FlowPane fpNumOfPlayers = new FlowPane(5,5);
@@ -149,6 +160,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          fpNumOfPlayers.getChildren().addAll(lblNumOfPlayers, cbNumOfPlayers);
          // Number of laps
       FlowPane fpNumOfLaps = new FlowPane(5,5);
+         tfNumOfLaps.setPromptText("1 to 2,147,483,646");
          fpNumOfLaps.getChildren().addAll(lblNumOfLaps, tfNumOfLaps);
       vbSettings.getChildren().addAll(fpNumOfPlayers, fpNumOfLaps);
       root.getChildren().add(vbSettings);
@@ -181,6 +193,8 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
       switch(command)
       {
          case "Start Game":
+            tfServerPassword.setDisable(true);
+            serverPassword = tfServerPassword.getText();
             startGame();
             break;
       }
@@ -192,6 +206,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          tfNumOfLaps.getText().length() < 1)
       {
          DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting game", "One or multiple game settings are incorrect");
+         tfServerPassword.setDisable(false);
       }
       else
       {
@@ -200,19 +215,29 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          clients = new Client[numOfPlayers];
          
          boolean isANumber = false;
+         int tempLapNum = 0;
          try
          {
-            numOfLaps = Integer.parseInt(tempLaps);
+            tempLapNum = Integer.parseInt(tempLaps);
             isANumber = true;
          }
          catch(Exception e)
          {
             DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting game", "The value in the \"Number of Laps\" field is not a number.");
+            tfServerPassword.setDisable(false);
          }
          
          if(isANumber)
          {
-            startServer();
+            if(tempLapNum >= 2_147_483_647 || tempLapNum < 1)
+            {
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting game", "The value in the \"Number of Laps\" field is either to high or too low.");
+               tfServerPassword.setDisable(false);
+            }
+            else
+            {
+               startServer();
+            }
          }
       }
    }
@@ -263,20 +288,36 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             try
             {
                cSocket = this.sSocket.accept();
+            
+               ObjectInputStream input = new ObjectInputStream(cSocket.getInputStream());
+               ObjectOutputStream output = new ObjectOutputStream(cSocket.getOutputStream());
+               
+               String pass = (String)input.readObject();
+               
+               if(pass.equals(serverPassword))
+               {
+                  output.writeObject("LOGGED_IN");
+                  ClientThread ct = new ClientThread(cSocket, output, input, playerNum);
+                  synchronized(clientThreadsLock)
+                  {
+                     clientThreads.add(ct);
+                  }
+                  numOfPlayers--;
+                  playerNum++;
+               }
+               else
+               {
+                  output.writeObject("DENIED");
+               }
+            }
+            catch(ClassNotFoundException cnfe)
+            {
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "Error joining players", cnfe + "");
             }
             catch(IOException ioe)
             {
                DisplayMessage.showAlert(stage, AlertType.ERROR, "Error joining players", ioe + "");
             }
-            
-            ClientThread ct = new ClientThread(cSocket, playerNum);
-            synchronized(clientThreadsLock)
-            {
-               clientThreads.add(ct);
-            }
-            taLog.appendText("\nPlayer" + playerNum + " joined\n");
-            numOfPlayers--;
-            playerNum++;
          }
          
          // Initialize Players
@@ -285,6 +326,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             for(ClientThread cThread:clientThreads)
             {
                cThread.initializePlayer();
+               taLog.appendText("\n" + cThread.getClientName() + "#" + cThread.getClientNumber() + " joined\n");
             }
          }
          taLog.appendText("\nPlayers initialized...");
@@ -338,6 +380,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          // General
       private Socket cSocket = null;
       private int clientNumber;
+      private String clientName;
       private boolean error = false;
          // Client Server Communication
       private ObjectOutputStream oos = null;
@@ -357,22 +400,15 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
       private double prevY = 0;
       
       public int getClientNumber() {return this.clientNumber;}
+      public String getClientName() {return this.clientName;}
       
       /** ClientThread constructor*/
-      public ClientThread(Socket _cSocket, int _clientNumber)
+      public ClientThread(Socket _cSocket, ObjectOutputStream _oos, ObjectInputStream _ois, int _clientNumber)
       {
          this.cSocket = _cSocket;
          this.clientNumber = _clientNumber;
-         
-         try
-         {
-            this.oos = new ObjectOutputStream(this.cSocket.getOutputStream());
-            this.ois = new ObjectInputStream(this.cSocket.getInputStream());
-         }
-         catch(IOException ioe)
-         {
-            DisplayMessage.showAlert(stage, AlertType.ERROR, "ClientThread: Error instantiating streams", ioe + "");
-         }
+         this.oos = _oos;
+         this.ois = _ois;
       } // constructor
       
       public void run()
@@ -457,12 +493,12 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                                     currentLap++;
                                     if(currentLap > numOfLaps && gameRunning)
                                     {
+                                       gameRunning = false;
+                                       taLog.appendText("\n\nGame Over\n" + clientName + "#" + clientNumber + " won the race!");
                                        for(ClientThread ct:clientThreads)
                                        {
-                                          gameRunning = false;
                                           ct.stopGame(clientNumber);
-                                          ct.receiveChatMessage(-1, "Game Over\nPlayer" + clientNumber + " won the race!");
-                                          taLog.appendText("\n\nGame Over\nPlayer" + clientNumber + " won the race!");
+                                          ct.receiveChatMessage(-1, "Game Over\n" + clientName + "#" + clientNumber + " won the race!");
                                        }
                                     }
                                     else
@@ -602,7 +638,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                error = true;
             }
             
-            taLog.appendText("\n\nPlayer" + clientNumber + " disconnected.");
+            taLog.appendText("\n\n" + clientName + "#" + clientNumber + " disconnected.");
             
             // if all clients disconnected stop the server
             if(clientThreads.size() == 0)
@@ -623,8 +659,10 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             oos.writeObject(numOfLaps);
             
             String carFileName = (String)ois.readObject();
+            this.clientName = (String)ois.readObject();
             
-            Client c = new Client(this.cSocket, this.oos, this.ois, this.clientNumber);
+            
+            Client c = new Client(this.cSocket, this.oos, this.ois, this.clientNumber, this.clientName);
             
             c.setCarFileName(carFileName);
             c.setStartX(startX[clientNumber-1]);
@@ -664,6 +702,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                {
                   oos.writeObject("INIT_OPPONENT");
                   Opponent op = new Opponent(c.getClientNumber(),
+                                             c.getClientName(),
                                              c.getCarFileName(),
                                              c.getStartX(),
                                              c.getStartY(),
