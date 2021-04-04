@@ -389,7 +389,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       Label lblFill1 = new Label("");
       Label lblFill2 = new Label("");
       
-      rootChat.getChildren().addAll(rootPublicChat, lblFill1, lblFill2, rootPrivateChat);
+      rootChat.getChildren().addAll(rootPublicChat, lblFill1, rootPrivateChat);
       
       // CHAT setOnAction()
       btnChatEnter.setOnAction(this);
@@ -545,7 +545,10 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          {
             case "Start":
                if(tfServerIp.getText().length() > 0 &&
-                  tfClientName.getText().length() > 0)
+                  tfServerIp.getText().length() <= 20 &&
+                  tfServerPassword.getText().length() <= 20 &&
+                  tfClientName.getText().length() > 0 &&
+                  tfClientName.getText().length() <= 10)
                {
                   Client c = new Client();
                   c.start();
@@ -553,7 +556,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                }
                else
                {
-                  DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting the game", "One or multiple log in fields are missing information");
+                  DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting the game", "One or multiple fields are missing information and/or have too many symbols");
                }
                break;
             //case "Options":
@@ -1068,7 +1071,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             if(login.equals("LOGGED_IN"))
             {
                loggedIn = true;
-               DisplayMessage.showAlert(stage, AlertType.INFORMATION, "Connected to the server", "The game will start as soon as all players connect to the server");
+               TitleScreen.showConnectionMessage();
             }
             else 
             {
@@ -1142,7 +1145,16 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         playerNumber = (Integer)ois.readObject();
                            // RECEIVE number of laps in the race
                         numOfLaps = (Integer)ois.readObject();
-                        tLaps.setText("Lap: " + currentLap + "/" + numOfLaps);
+                        Platform.runLater
+                        (
+                           new Runnable()
+                           {
+                              public void run()
+                              {
+                                 tLaps.setText("Lap: " + currentLap + "/" + numOfLaps);
+                              }
+                           }
+                        );
                            // SEND car file name
                         oos.writeObject(carFileArray[carArrayIndex]);
                            // SEND nickname
@@ -1375,6 +1387,23 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      if(opponentToDisconnect != -1)
                      {
                         Opponent disconnectedOp = null;
+                        
+                        synchronized(opponentsLock)
+                        {
+                           for(Opponent op:opponents)
+                           {
+                              if(op.getClientNumber() == opponentToDisconnect)
+                              {
+                                 disconnectedOp = op;
+                                 break;
+                              }
+                           }
+                        }
+                        
+                        String serverMessage = disconnectedOp.getClientName() + "#" + disconnectedOp.getClientNumber() + " disconnected.";
+                        taPublicChat.appendText("\nServer Message: " + serverMessage + "\n");
+                        sendPrivateServerMessage(opponentToDisconnect, serverMessage);
+                        
                         synchronized(opponentsLock)
                         {
                            for(Opponent op:opponents)
@@ -1401,10 +1430,6 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                               }
                            }
                         }
-                        
-                        String serverMessage = disconnectedOp.getClientName() + "#" + disconnectedOp.getClientNumber() + " disconnected.";
-                        taPublicChat.appendText("\nServer Message: " + serverMessage + "\n");
-                        sendPrivateServerMessage(opponentToDisconnect, serverMessage);
                      } // if opponent to disconnect exists
                      break; // DISCONNECT_OPPONENT
                   case "UPDATE_CHECKPOINT":

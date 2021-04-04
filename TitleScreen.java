@@ -27,6 +27,7 @@ public class TitleScreen
    private static Button btnOptions = new Button("Options");
    private static Button btnStart = null;
    private static Button btnTest = new Button("TEST");
+   private static Label lblWaitingForPlayers = new Label("Connected to the server. The game will start as soon as all players connect.");
          // Log In
    private static TextField tfServerIp = null;
    private static TextField tfServerPassword = null;
@@ -72,6 +73,11 @@ public class TitleScreen
       return titleScreen;
    }
    
+   public static void showConnectionMessage()
+   {
+      lblWaitingForPlayers.setVisible(true);
+   }
+   
    /** Sets up the title screen scene and its elements*/
    private static void createTitleScreen()
    {
@@ -85,20 +91,20 @@ public class TitleScreen
       FlowPane fpServerIp = new FlowPane(5,5);
          fpServerIp.setAlignment(Pos.CENTER);
          Label lblServerIp = new Label("Server IP: ");
-         tfServerIp.setPromptText("Server IP");
+         tfServerIp.setPromptText("Server IP (1 to 20 char)");
          tfServerIp.setText("127.0.0.1");
          fpServerIp.getChildren().addAll(/*lblServerIp,*/ tfServerIp);
       // Server log in
       FlowPane fpServerPassword = new FlowPane(5,5);
          fpServerPassword.setAlignment(Pos.CENTER);
          Label lblServerPassword = new Label("Password: ");
-         tfServerPassword.setPromptText("Password");
+         tfServerPassword.setPromptText("Password (1 to 20 char)");
          fpServerPassword.getChildren().addAll(/*lblServerPassword,*/ tfServerPassword);
       // Nickname
       FlowPane fpClientName = new FlowPane(5,5);
          fpClientName.setAlignment(Pos.CENTER);
          Label lblClientName = new Label("Nickname: ");
-         tfClientName.setPromptText("Nickname");
+         tfClientName.setPromptText("Nickname (1 to 10 char)");
          fpClientName.getChildren().addAll(/*lblClientName,*/ tfClientName);
       // TEST
       FlowPane fpTest = new FlowPane();
@@ -141,10 +147,12 @@ public class TitleScreen
       btnOptions.setOnAction(ae);
       btnExit.setOnAction(ae);
       
+      lblWaitingForPlayers.setVisible(false);
+      
       // Root
       root = new VBox(20);
       root.setAlignment(Pos.CENTER);
-      root.getChildren().addAll(fpLabel, fpTest, fpStart, fpServerIp, fpServerPassword, fpClientName, /*fpOptions,*/ vbColorSelect, fpExit);
+      root.getChildren().addAll(fpLabel, lblWaitingForPlayers, /*fpTest,*/ fpStart, fpServerIp, fpServerPassword, fpClientName, /*fpOptions,*/ vbColorSelect, fpExit);
       
       // Scene
       titleScreen = new Scene(root, screenWidth, screenHeight);

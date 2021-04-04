@@ -145,7 +145,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
       // Password
          Label lblServerPassvord = new Label("Password(Optional): ");
          tfServerPassword.setPrefColumnCount(10);
-         tfServerPassword.setPromptText("Password(Optional)");
+         tfServerPassword.setPromptText("1 to 20 char");
          fpServerPassword.getChildren().addAll(lblServerPassvord, tfServerPassword);
       root.getChildren().add(fpServerPassword);
       
@@ -193,9 +193,16 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
       switch(command)
       {
          case "Start Game":
-            tfServerPassword.setDisable(true);
-            serverPassword = tfServerPassword.getText();
-            startGame();
+            if(tfServerPassword.getText().length() <= 20)
+            {
+               tfServerPassword.setDisable(true);
+               serverPassword = tfServerPassword.getText();
+               startGame();
+            }
+            else
+            {
+               DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting game", "Password is too long. Password be 1 to 20 chars long.");
+            }
             break;
       }
    }
@@ -236,6 +243,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             }
             else
             {
+               numOfLaps = tempLapNum;
                startServer();
             }
          }
