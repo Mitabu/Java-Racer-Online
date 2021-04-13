@@ -1,5 +1,6 @@
 // JavaFX
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.event.*;
 import javafx.scene.*;
 import javafx.scene.text.*;
@@ -220,6 +221,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
       {
          numOfPlayers = cbNumOfPlayers.getValue();
          String tempLaps = tfNumOfLaps.getText();
+         //taLog.appendText("Creating client array " + numOfPlayers + "\n");
          clients = new Client[numOfPlayers];
          
          boolean isANumber = false;
@@ -245,6 +247,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             else
             {
                numOfLaps = tempLapNum;
+               btnStartGame.setDisable(true);
                startServer();
             }
          }
@@ -287,8 +290,17 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
       
       public void run()
       {
-         // Show that server started waiting for clients
-         taLog.appendText("\nWaiting for players to join...\n");
+         Platform.runLater
+         (
+            new Runnable()
+            {
+               public void run()
+               {
+                  // Show that server started waiting for clients
+                  taLog.appendText("\nWaiting for players to join...\n");
+               }
+            }
+         );
          
          // Wait for clients
          while(numOfPlayers > 0)

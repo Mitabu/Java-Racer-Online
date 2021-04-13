@@ -507,6 +507,15 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                   // Pass user commands to the Player
                   //System.out.println("Turn: " + turn + " Velocity: " + velocity);
                   
+                  //for(Player p:opponentPlayers)
+                  //{
+                  //   if(mainPlayer.getBody().getBoundsInParent().intersects(p.getBody().getBoundsInParent()))
+                  //   {
+                  //      System.out.println("Intersection with Player " + p.getPlayerNumber());
+                  //      //velocity = -10;
+                  //   }
+                  //}
+                  
                   mainPlayer.update(turn, velocity);
                   lastUpdate = now;
                }
