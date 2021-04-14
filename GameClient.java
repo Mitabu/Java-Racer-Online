@@ -22,6 +22,21 @@ import java.net.*;
 import java.text.FieldPosition;
 import java.text.Format;
 import java.text.ParsePosition;
+//XML DOM PARSER
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.OutputKeys;
+import org.w3c.dom.Attr;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import java.io.File;
+import javax.xml.parsers.*;
+import javax.xml.xpath.*;
+import org.xml.sax.*;
 
 /**
 *  @author Artem Polkovnikov
@@ -70,11 +85,12 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    private Button btnBack = new Button("Back to Title");
    
    // Images
-   private static final String TRACK_FILE_NAME = "track.png";
-   private String carFileName = "car_blue.png";
+   private static final String TRACK_FILE_NAME = "Assets/track.png";
+   //private String carFileName = "car_blue.png";
    
    // Networking
-   private static final int SERVER_PORT = 42069;
+   private int serverPort = 42069;
+   private String serverIP = "127.0.0.1";
    private Socket socket = null;
    
    private ObjectOutputStream oos = null;
@@ -160,6 +176,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    private long lastUpdate = 0;
    
    // GAME
+   private static final String CONFIG_FILE = "game-client-configuration.xml";
    private boolean error = false;
    
    /** Boolean that determines the input from the keyboard*/
@@ -169,7 +186,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    private Player mainPlayer = null;
    
    /** Array of car file names*/
-   private String[] carFileArray = {"car_blue.png", "car_orange.png", "car_purple.png", "car_red.png"};
+   private String[] carFileArray = {"Assets/car_blue.png", "Assets/car_orange.png", "Assets/car_purple.png", "Assets/car_red.png"};
    private String[] carNameArray = {"Blue",         "Orange",         "Purple",         "Red"};
    private int carArrayIndex = 0;
    
@@ -185,6 +202,40 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             System.exit(0);
          }
       });
+      
+      // Load in Game Configuration
+      XMLSettings xmlWorker = new XMLSettings(CONFIG_FILE);
+      File configFile = new File(CONFIG_FILE);
+      if(!configFile.exists())
+      {
+         xmlWorker.writeXML();
+      }
+      xmlWorker.readXML();
+      
+      serverPort = xmlWorker.serverPort;
+      serverIP = xmlWorker.serverIP;
+      
+      String presetNickname = xmlWorker.nickname;
+      String presetCarColor = xmlWorker.carColor;
+      
+      switch(presetCarColor)
+      {
+         case "blue":
+            carArrayIndex = 0;
+            break;
+         case "orange":
+            carArrayIndex = 1;
+            break;
+         case "purple":
+            carArrayIndex = 2;
+            break;
+         case "red":
+            carArrayIndex = 3;
+            break;
+         default:
+            carArrayIndex = 0;
+            break;
+      }
       
       // TRACK
       track = new StackPane(); 
@@ -216,7 +267,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       track.getChildren().addAll(imgViewTrack, spCountDown);
       
       // SET SCENES
-      titleScreenScene = TitleScreen.getScene(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfServerIp, tfServerPassword, tfClientName, btnStart, tfColorSelect, carNameArray[carArrayIndex]);
+      titleScreenScene = TitleScreen.getScene(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfServerIp, tfServerPassword, tfClientName, btnStart, tfColorSelect, carNameArray[carArrayIndex], serverIP, presetNickname);
       //optionsObject = new Options(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfColorSelect, carNameArray[carArrayIndex]);
       //optionsScene = optionsObject.getScene();
       
@@ -672,6 +723,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                   }
                );
                break;
+            case "Save Current Configuration":
+               // Save config
+               XMLSettings xmlWorker = new XMLSettings(CONFIG_FILE, tfServerIp.getText(), tfClientName.getText(), carNameArray[carArrayIndex].toLowerCase());
+               xmlWorker.writeXML();
+               
+               DisplayMessage.showAlert(stage, AlertType.INFORMATION, "Configuration saved to the XML file", xmlWorker.readXML());
+               break;
          }
       }
    }
@@ -1073,7 +1131,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          try
          {
             // Open socket for server connection
-            socket = new Socket(tfServerIp.getText(), SERVER_PORT);
+            socket = new Socket(tfServerIp.getText(), serverPort);
             
             // Input/output with the server																
             oos = new ObjectOutputStream(socket.getOutputStream());
@@ -1516,6 +1574,138 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          } // while(true)
       } // run()
    } // Client
+   
+   class XMLSettings
+   {
+      // Attributes - properties
+         // Socket
+      public String serverIP = "127.0.0.1";
+      public int serverPort = 42069;
+         // Game Settings
+      public String nickname = " ";
+      public String carColor = "blue";
+      
+      // Private properties
+      private String xmlFilePath = "";
+      
+      // Constructor
+      public XMLSettings(String _fileName)
+      {
+         this.xmlFilePath = _fileName;
+      }
+      
+      public XMLSettings(String _fileName, String _serverIP, String _nickname, String _carColor)
+      {
+         this.xmlFilePath = _fileName;
+         this.serverIP = _serverIP;
+         this.nickname = _nickname;
+         this.carColor = _carColor;
+      }
+      
+      public void writeXML()
+      {
+         try {
+            DocumentBuilderFactory dbFactory =
+               DocumentBuilderFactory.newInstance();
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.newDocument();
+         
+         // root element
+            Element rootElement = doc.createElement("GameSettings");
+            doc.appendChild(rootElement);
+         
+         // socket
+            Element socket = doc.createElement("Socket");
+            rootElement.appendChild(socket);
+         
+            // port
+            Element port = doc.createElement("port");
+            port.appendChild(doc.createTextNode(this.serverPort+""));
+            socket.appendChild(port);
+            // server ip
+            Element serverIp = doc.createElement("serverIP");
+            serverIp.appendChild(doc.createTextNode(this.serverIP+""));
+            socket.appendChild(serverIp);
+            
+         // game settings
+            Element gameSettings = doc.createElement("Game_Settings");
+            rootElement.appendChild(gameSettings);
+            
+            // nickname
+            Element nicknameE = doc.createElement("nickname");
+            nicknameE.appendChild(doc.createTextNode(this.nickname+""));
+            gameSettings.appendChild(nicknameE);
+            
+            // car color
+            Element carColorE = doc.createElement("car_color");
+            carColorE.appendChild(doc.createTextNode(this.carColor+""));
+            gameSettings.appendChild(carColorE);
+         
+         // write the content into xml file
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+            DOMSource source = new DOMSource(doc);
+            StreamResult result = new StreamResult(new File(this.xmlFilePath));
+            transformer.transform(source, result);
+         
+         // Output to console for testing
+            StreamResult consoleResult = new StreamResult(System.out);
+            transformer.transform(source, consoleResult);
+         } catch (Exception e) {
+            e.printStackTrace();
+         }  
+      }// end of writeXML
+      
+       public String readXML()
+       {
+         try{
+            DocumentBuilderFactory dbfactory= DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = dbfactory.newDocumentBuilder();
+            XPathFactory xpfactory = XPathFactory.newInstance();
+            XPath path = xpfactory.newXPath();
+         
+            File f = new File(this.xmlFilePath);
+            Document doc = builder.parse(f);
+            
+            this.serverPort = Integer.parseInt(path.evaluate(
+                  "/GameSettings/Socket/port", doc));
+                  
+            this.serverIP = path.evaluate(
+                  "/GameSettings/Socket/serverIP", doc);
+                  
+            this.nickname = path.evaluate(
+                  "/GameSettings/Game_Settings/nickname", doc);
+                  
+            this.carColor = path.evaluate(
+                  "/GameSettings/Game_Settings/car_color", doc);
+         
+            return ("Current configuration: \nServer Port: " + this.serverPort + "    Server IP: " + this.serverIP + "\nNickname: " + this.nickname + "    Car color: " + this.carColor);         
+         
+         }
+         catch(XPathExpressionException xpee)
+         {
+            System.out.println(xpee);
+         }
+         catch(ParserConfigurationException pce)
+         {
+            System.out.println(pce);
+         }
+         catch(SAXException saxe)
+         {
+            System.out.println(saxe);
+         }
+         catch(IOException ioe)
+         {
+            System.out.println(ioe);
+         
+         }
+         
+         return "ERROR";
+      }//end of readXML
+   }
+
    
    public static void main(String[] args) {
         launch(args);

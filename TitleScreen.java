@@ -27,11 +27,14 @@ public class TitleScreen
    private static Button btnOptions = new Button("Options");
    private static Button btnStart = null;
    private static Button btnTest = new Button("TEST");
+   private static Button btnSaveConfig = new Button("Save Current Configuration");
    private static Label lblWaitingForPlayers = new Label("Connected to the server. The game will start as soon as all players connect.");
          // Log In
    private static TextField tfServerIp = null;
+   private static String presetTextServerIP;
    private static TextField tfServerPassword = null;
    private static TextField tfClientName = null;
+   private static String presetTextNickname;
          // Car Color Select
    private static FlowPane fpColorSelect;
    private static Button btnPrev = new Button("Prev. color");
@@ -53,7 +56,7 @@ public class TitleScreen
    * @param _screenWidth the width of the application window in pixels
    * @param _screenHeight the height of the application window in pixels
    */
-   public static Scene getScene(EventHandler<ActionEvent> _ae, int _screenWidth, int _screenHeight, TextField _tfServerIp, TextField _tfServerPassword, TextField _tfClientName, Button _btnStart, TextField _tfColorSelect, String _selectedColor)
+   public static Scene getScene(EventHandler<ActionEvent> _ae, int _screenWidth, int _screenHeight, TextField _tfServerIp, TextField _tfServerPassword, TextField _tfClientName, Button _btnStart, TextField _tfColorSelect, String _selectedColor, String _serverIP, String _nickname)
    {
       // Set scene parameters
       ae = _ae;
@@ -67,6 +70,8 @@ public class TitleScreen
       tfColorSelect = _tfColorSelect;
       selectedColor = _selectedColor;
       btnStart = _btnStart;
+      presetTextServerIP = _serverIP;
+      presetTextNickname = _nickname;
       
       createTitleScreen();
       
@@ -92,7 +97,7 @@ public class TitleScreen
          fpServerIp.setAlignment(Pos.CENTER);
          Label lblServerIp = new Label("Server IP: ");
          tfServerIp.setPromptText("Server IP (1 to 20 char)");
-         tfServerIp.setText("127.0.0.1");
+         tfServerIp.setText(presetTextServerIP);
          fpServerIp.getChildren().addAll(/*lblServerIp,*/ tfServerIp);
       // Server log in
       FlowPane fpServerPassword = new FlowPane(5,5);
@@ -105,6 +110,10 @@ public class TitleScreen
          fpClientName.setAlignment(Pos.CENTER);
          Label lblClientName = new Label("Nickname: ");
          tfClientName.setPromptText("Nickname (1 to 10 char)");
+         if(presetTextNickname.trim().length() > 0)
+         {
+            tfClientName.setText(presetTextNickname);
+         }
          fpClientName.getChildren().addAll(/*lblClientName,*/ tfClientName);
       // TEST
       FlowPane fpTest = new FlowPane();
@@ -115,6 +124,10 @@ public class TitleScreen
       FlowPane fpStart = new FlowPane();
          fpStart.setAlignment(Pos.CENTER);
          fpStart.getChildren().add(btnStart);
+      // Save configuration
+      FlowPane fpSaveConfig = new FlowPane();
+         fpSaveConfig.setAlignment(Pos.CENTER);
+         fpSaveConfig.getChildren().add(btnSaveConfig);
          
       // Options
       //FlowPane fpOptions = new FlowPane();
@@ -142,6 +155,7 @@ public class TitleScreen
       // Set on action
       btnTest.setOnAction(ae);
       btnStart.setOnAction(ae);
+      btnSaveConfig.setOnAction(ae);
       btnPrev.setOnAction(ae);
       btnNext.setOnAction(ae);
       btnOptions.setOnAction(ae);
@@ -152,7 +166,7 @@ public class TitleScreen
       // Root
       root = new VBox(20);
       root.setAlignment(Pos.CENTER);
-      root.getChildren().addAll(fpLabel, lblWaitingForPlayers, /*fpTest,*/ fpStart, fpServerIp, fpServerPassword, fpClientName, /*fpOptions,*/ vbColorSelect, fpExit);
+      root.getChildren().addAll(fpLabel, lblWaitingForPlayers, /*fpTest,*/ fpStart, fpSaveConfig, fpServerIp, fpServerPassword, fpClientName, /*fpOptions,*/ vbColorSelect, fpExit);
       
       // Scene
       titleScreen = new Scene(root, screenWidth, screenHeight);
