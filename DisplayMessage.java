@@ -1,8 +1,10 @@
+// JavaFX
 import javafx.stage.*;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.*;
 import javafx.scene.control.ButtonType;
 import javafx.application.Platform;
+// Java
 import java.util.Optional;
 
 /**
@@ -16,6 +18,7 @@ public class DisplayMessage
    /** 
    *  Shows an alert message to the user and waits
    *
+   *  @param _owner the owner stage on which the alert pop up is shown
    *  @param _at alert type
    *  @param _ht header text of the alert
    *  @param _ct content text of the alert
@@ -40,16 +43,17 @@ public class DisplayMessage
    }
    
    /**
-   * Shows a confirmation popup and returns true if OK button was pressed
+   *  Shows a confirmation popup and returns true if OK button was pressed
    *
-   *  @param _owner the stage on which the alert pop up is shown
+   *  @param _owner the owner stage on which the alert pop up is shown
    *  @param _ht header text of the alert
+   *  @return user's decision (true = OK; false = cancel;)
    */
    public static boolean showConfirmation(Stage _owner, String _ht)
    {
       Alert alert = new Alert(AlertType.CONFIRMATION);
       alert.setHeaderText(_ht);
-      alert.setContentText("Press OK to continue");
+      alert.setContentText("Click OK to continue");
       alert.initOwner(_owner);
       
       Optional <ButtonType> result = alert.showAndWait();

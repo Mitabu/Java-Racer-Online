@@ -7,7 +7,9 @@
 public class Vector2
 {
     // Members
+    /** X coordinate of the vector*/
     private double x;
+    /** Y coordinate of the vector*/
     private double y;
     
     // Accessors
@@ -19,7 +21,7 @@ public class Vector2
        
     /** 
     * Standard constructor
-    * (points -1 on Y-AXIS)
+    * (creates a vector that points to -1 on Y-AXIS)
     */
     public Vector2()
     {
@@ -50,7 +52,11 @@ public class Vector2
         this.y = _other.y;
     }
     
-    /** Finds the length of the vector adn returns it*/
+    /** 
+    * Finds the length of the vector and returns it
+    *
+    * @return vector length
+    */
     public double getLength()
     {
       double length = Math.sqrt( Math.pow(this.x , 2) + Math.pow(this.y , 2));
@@ -61,6 +67,8 @@ public class Vector2
     * Multiplies a vector by a value
     *
     * @param _c the value the vector is multiplied by
+    *
+    * @return this vector
     */
     public Vector2 dot(double _c) // Multiplication of vectors without changing direciton
     {
@@ -73,7 +81,9 @@ public class Vector2
     /**
     * Adds another vector to THIS vector
     *
-    * @param _other the vector that you want to add to THIS vector
+    * @param _other the vector that you want to add to this vector
+    *
+    * @return this vector
     */
     public Vector2 add(Vector2 _other) // Vector addition
     {
@@ -86,7 +96,9 @@ public class Vector2
     /**
     * Subtracts another vector from THIS vector
     *
-    * @param _other the vector that you want to subtract from THIS vector
+    * @param _other the vector that you want to subtract from this vector
+    *
+    * @return this vector
     */
     public Vector2 subtract(Vector2 _other) // Vector subtraction
     {
@@ -100,6 +112,8 @@ public class Vector2
     * Rotates THIS vector by a number of DEGREES
     *
     * @param _newAngleInDegrees the angle by which you want to rotate THIS vector
+    *
+    * @return this vector
     */
     public Vector2 rotatedBy(double _newAngleInDegrees) // Anti-clock wise rotation
     {         
@@ -127,7 +141,11 @@ public class Vector2
       return this;
     }
     
-    /** Returns the rotation of THIS vector*/
+    /** 
+    * Returns the rotation of this vector
+    *
+    * @return rotation of this vector
+    */
     public double getRotation()
     {
       double t = (this.y / Math.abs(this.y)) * Math.acos( ( (this.x * 1) + (this.y * 0) ) / (Math.sqrt( (Math.pow(this.x, 2) + Math.pow(this.y, 2) * (1 + 0) ) )) );
@@ -135,7 +153,11 @@ public class Vector2
       return Math.toDegrees(t);
     }
     
-    /** Displays X and Y values of THIS vector*/
+    /** 
+    * Displays formatted coordinates of this vector
+    *
+    * @return formatted coordinates of this vector
+    */
     public String toString()
     {
       return "x: " + this.x + " y: " + this.y;

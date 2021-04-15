@@ -3,6 +3,7 @@
 *  @version 03.04.2021
 */
 
+/** Class that stores game logic operations*/
 public class GameLogic
 {
    /**
@@ -10,6 +11,8 @@ public class GameLogic
    *
    * @param l1 line
    * @param p point
+   *
+   * @return true = point is on the line; false = point is not on the line;
    */
    private static boolean onLine(CheckPoint l1, Position p)
    {
@@ -27,6 +30,8 @@ public class GameLogic
    * @param a point one
    * @param b point two
    * @param c point three
+   *
+   * @return true = lines are collinear; false = lines aren't collinear;
    */
    private static int direction(Position a, Position b, Position c)
    {
@@ -48,6 +53,8 @@ public class GameLogic
    * 
    * @param l1 first line for intersection check
    * @param l2 second line for intersection check
+   *
+   * @return true = lines are intersecting; false = lines are not intersecting;
    */
    public static boolean isIntersect(CheckPoint l1, CheckPoint l2)
    {
@@ -85,6 +92,8 @@ public class GameLogic
    * Returns x length of a line
    *
    * @param x line
+   *
+   * @return x length of line line
    */
    public static double getLineX(CheckPoint x)
    {
@@ -95,6 +104,8 @@ public class GameLogic
    * Returns y length of a line
    *
    * @param y line
+   *
+   * @return y length of the line
    */
    public static double getLineY(CheckPoint y)
    {

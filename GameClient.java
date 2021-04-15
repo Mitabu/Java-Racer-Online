@@ -22,161 +22,208 @@ import java.net.*;
 import java.text.FieldPosition;
 import java.text.Format;
 import java.text.ParsePosition;
-//XML DOM PARSER
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import javax.xml.transform.OutputKeys;
-import org.w3c.dom.Attr;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import java.io.File;
-import javax.xml.parsers.*;
-import javax.xml.xpath.*;
-import org.xml.sax.*;
 
 /**
 *  @author Artem Polkovnikov
-*  @version 02.04.2021
+*  @version 14.04.2021
 */
 
+/** Game client that is responsible for all the game's client side functionality*/
 public class GameClient extends Application implements EventHandler<ActionEvent>
 {
    // Attributes
+   
    // Stage
+   /** Main stage*/
    private Stage stage;
    
    // Window proportions
       // Track (16/9)
+   /** Racing track width*/
    public static final double TRACK_WIDTH = 1550;
+   /** Racing track height*/
    public static final double TRACK_HEIGHT = 872;
       // Chat
+   /** Chat sidebar width*/
    public static final double CHAT_WIDTH = 250;
+   /** Chat sidebar height*/
    public static final double CHAT_HEIGHT = 500;
       // Window
+   /** Main window width*/
    public static final double WINDOW_WIDTH = TRACK_WIDTH + CHAT_WIDTH;
+   /** Main window height*/
    public static final double WINDOW_HEIGHT = TRACK_HEIGHT;
    
+   
    // Layout
-      // SCENES
-            // Title Screen
+      // Scenes
+            // Title Screen scene
+   /** Title screen scene*/
    private Scene titleScreenScene;
+   /** Server IP text field*/
    private TextField tfServerIp = new TextField();
+   /** Game password text field*/
    private TextField tfServerPassword = new TextField();
+   /** Player nickname text field*/
    private TextField tfClientName = new TextField();
+   /** Game start button*/
    private Button btnStart = new Button("Start");
-            // Options
-   //private Scene optionsScene;
-   //private Options optionsObject;
+   /** Car color select text field*/
    private TextField tfColorSelect = new TextField();
-            // Game
+            // Game scene
+   /** Game scene*/
    private Scene gameScene;
-      // GAME
-         // ROOT
+   /** Root pane of the game scene*/
    private GridPane root;
-         // Racing track
+   /** Racing track pane*/
    private StackPane track;
+   /** Racing track image*/
    private Image imgTrack;
+   /** Racing track imageView*/
    private ImageView imgViewTrack;
-         // TEMP
-   private Button btnBack = new Button("Back to Title");
    
    // Images
+   /** Racing track image file locaiton*/
    private static final String TRACK_FILE_NAME = "Assets/track.png";
-   //private String carFileName = "car_blue.png";
    
    // Networking
+      // General attributes
+   /** Server port*/
    private int serverPort = 42069;
+   /** Server IP*/
    private String serverIP = "127.0.0.1";
+   /** Client socket*/
    private Socket socket = null;
-   
+   /** Server ObjectOutputStream*/
    private ObjectOutputStream oos = null;
+   /** Server ObjectInputStream*/
    private ObjectInputStream ois = null;
-   
+   /** Game client object storage*/
    private GameClient gameClient = null;
-   
-      // Synchronization
+      // Synchronization of streams
+   /** Client streams synchronization object*/
    private Object oosLock = new Object();
    
    // Multiplayer
+      // Main client's game attributes
+   /** Main client's identification number*/
    private int playerNumber;
-   private ArrayList<Opponent> opponents = new ArrayList<Opponent>();
-   private Object opponentsLock = new Object();
-   
-   private ArrayList<Player> opponentPlayers = new ArrayList<Player>();
-   private Object opponentPlayersLock = new Object();
-   
+   /** Main client's starting X coordinate*/
    private double mainStartX = 0;
+   /** Main client's starting Y coordinate*/
    private double mainStartY = 0;
+   /** Main client's starting rotation*/
    private double mainStartDegree = 0;
+      // Opponents' information
+   /** ArrayList of Opponent objects that contain opponent details used for their display*/
+   private ArrayList<Opponent> opponents = new ArrayList<Opponent>();
+   /** Synchronization object for opponents ArrayList*/
+   private Object opponentsLock = new Object();
+   /** ArrayList of opponent Player objects*/
+   private ArrayList<Player> opponentPlayers = new ArrayList<Player>();
+   /** Synchronization object for opponentPlayers ArrayList*/
+   private Object opponentPlayersLock = new Object();
       
       // CheckPoints
+   /** ArrayList of check point lines that are used for check point display on the game scene*/
    private ArrayList<Line> checkPoints = new ArrayList<Line>();
+   /** ArrayList of check points' X coordinates*/
    private ArrayList<Double> checkPointCoordinatesX = new ArrayList<Double>();
+   /** ArrayList of check points' Y coordinates*/
    private ArrayList<Double> checkPointCoordinatesY = new ArrayList<Double>();
-   
+   /** Number of the current check point that corresponds to the index of check points in each of the check point ArrayLists*/
    private int currentCheckPoint = 0;
+   /** Number of the current lap. Used for lap number display.*/
    private int currentLap = 1;
+   /** Total number of laps in the race. Used for total lap number display.*/
    private int numOfLaps = 0;
-   
+   /** Text that contains lap progress information*/
    private Text tLaps = new Text("Lap: " + currentLap + "/" + numOfLaps);
-   
-      // Game Start
+      // Game Start animation
+   /** Count down text (three)*/
    private Text tCountThree = new Text("3");
+   /** Count down text (two)*/
    private Text tCountTwo = new Text("2");
+   /** Count down text (one)*/
    private Text tCountOne = new Text("1");
+   /** Count down text (start)*/
    private Text tStart = new Text("Start!");
+   /** Game end text (finish)*/
    private Text tFinish = new Text("Finish!");
+   /** Game start boolean used for enabling keyboard listeners*/
    private boolean gameStart = false;
-   
+      
       // Chat
          // General
+   /** Chat sidebar root pane*/
    private VBox rootChat = new VBox(5);
+   /** Public chat root pane*/
    private VBox rootPublicChat = new VBox(5);
+   /** Private chat root pane*/
    private VBox rootPrivateChat = new VBox(5);
-
          // Public Chat
-   private static final double BUTTON_SLEEP = 2000;
+   /** Public chat text area*/
    private TextArea taPublicChat = new TextArea();
+   /** Public chat user intup text field*/
    private TextField tfChatEnter = new TextField();
-   
+            // Chat reaction buttons
+   /** Amount of time chat reactions buttons go in cooldown for (Milliseconds)*/
+   private static final double BUTTON_SLEEP = 2000;
+   /** Good luck have fun button*/
    private Button btnGLHF = new Button("GLHF");
+   /** Good game button*/
    private Button btnGG = new Button("GG");
+   /** Well played button*/
    private Button btnWP = new Button("WP");
-   
+   /** Chat reaction buttons array*/
    private Button[] reactionButtons = {btnGLHF, btnGG, btnWP};
-   
          // Private Chat
+            // Private chat text areas
+   /** Player 1 private chat text area*/
    private TextArea taP1Chat = new TextArea();
+   /** Player 2 private chat text area*/
    private TextArea taP2Chat = new TextArea();
+   /** Player 3 private chat text area*/
    private TextArea taP3Chat = new TextArea();
+   /** Player 4 private chat text area*/
    private TextArea taP4Chat = new TextArea();
-   
+   /** Preset player names array*/
    private String[] playerNames = {"Player 1", "Player 2", "Player 3", "Player 4"};
-   
+            // Private chat enter buttons
+   /** Player 1 private chat enter button*/
    private Button btnP1Chat = new Button(playerNames[0]);
+   /** Player 2 private chat enter button*/
    private Button btnP2Chat = new Button(playerNames[1]);
+   /** Player 3 private chat enter button*/
    private Button btnP3Chat = new Button(playerNames[2]);
+   /** Player 4 private chat enter button*/
    private Button btnP4Chat = new Button(playerNames[3]);
-   
+            //Text displayed on player private chat buttons
+   /** Player 1 private chat button text*/
    private String btnP1Text = null;
+   /** Player 2 private chat button text*/
    private String btnP2Text = null;
+   /** Player 3 private chat button text*/
    private String btnP3Text = null;
+   /** Player 4 private chat button text*/
    private String btnP4Text = null;
-   
+            // Private chat work
+   /** Number of the private chat in focus*/
    private int privateChatClientNumber = 1;
-   
+            // Private chat enter
+   /** Private chat enter text field*/
    private TextField tfPrivateChatEnter = new TextField();
+   /** Private chat enter button*/
    private Button btnPrivateChatEnter = new Button("Send Private");
    
    // Animation Timer
+   /** Time of the last frame update. Used to limit the game's frame rate.*/
    private long lastUpdate = 0;
    
-   // GAME
-   private static final String CONFIG_FILE = "game-client-configuration.xml";
+   // General game attributes
+   /** Game configuration file location*/
+   private static final String CONFIG_FILE = "game-configuration.xml";
+   /** Used to stop certain functions from execution in case of an error*/
    private boolean error = false;
    
    /** Boolean that determines the input from the keyboard*/
@@ -187,7 +234,9 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    
    /** Array of car file names*/
    private String[] carFileArray = {"Assets/car_blue.png", "Assets/car_orange.png", "Assets/car_purple.png", "Assets/car_red.png"};
+   /** Array of car color names*/
    private String[] carNameArray = {"Blue",         "Orange",         "Purple",         "Red"};
+   /** Index that is used to set car color. It corresponds to the index withing carFileArray and carNameArray*/
    private int carArrayIndex = 0;
    
    /** Sets up the stage and GUI*/
@@ -199,6 +248,17 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       new EventHandler<WindowEvent>() {
          public void handle(WindowEvent evt)
          {
+            try
+            {
+               if(oos != null)    oos.close();
+               if(ois != null)    ois.close();
+               if(socket != null) socket.close();
+            }
+            catch(IOException ioe)
+            {
+               System.out.println(ioe);
+               System.exit(1);
+            }
             System.exit(0);
          }
       });
@@ -212,9 +272,11 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       }
       xmlWorker.readXML();
       
+      // Get server info
       serverPort = xmlWorker.serverPort;
       serverIP = xmlWorker.serverIP;
       
+      // Get user presets
       String presetNickname = xmlWorker.nickname;
       String presetCarColor = xmlWorker.carColor;
       
@@ -237,13 +299,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             break;
       }
       
-      // TRACK
+      // Track pane
       track = new StackPane(); 
       
       // GameClient
       gameClient = this;
       
-      // CountDown
+      // CountDown styling
       StackPane spCountDown = new StackPane();
       tCountOne.setStyle("-fx-fill: white; -fx-font-size: 200px; -fx-font-weight: bold; -fx-stroke: black; -fx-stroke-width: 1;");
       tCountTwo.setStyle("-fx-fill: white; -fx-font-size: 200px; -fx-font-weight: bold; -fx-stroke: black; -fx-stroke-width: 1;");
@@ -263,13 +325,11 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       // Image initialization
       initImages();
       
-      // Track stack pane
+      // Track pane set up
       track.getChildren().addAll(imgViewTrack, spCountDown);
       
-      // SET SCENES
+      // Scene set up
       titleScreenScene = TitleScreen.getScene(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfServerIp, tfServerPassword, tfClientName, btnStart, tfColorSelect, carNameArray[carArrayIndex], serverIP, presetNickname);
-      //optionsObject = new Options(this, (int)WINDOW_WIDTH, (int)WINDOW_HEIGHT, tfColorSelect, carNameArray[carArrayIndex]);
-      //optionsScene = optionsObject.getScene();
       
       stage.setScene(titleScreenScene);
       stage.setResizable(false);
@@ -277,72 +337,70 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       stage.show();
    }
    
+   /** Sets up the game scene that is used for the race*/
    public void createGameScene()
    {
       // Layout
-         // ROOT
+         // Root
       root = new GridPane();
-            
-      //track.getChildren().add(mainPlayer);
       
-      // Root
-      TextArea taLog = new TextArea();
-      taLog.setPrefColumnCount(5);
-      
-      // CHAT
-/////////// PUBLIC CHAT
-         FlowPane fpPublicChat = new FlowPane(5,5);
-            Text txtPublicChat = new Text("Public Chat");
-            txtPublicChat.setStyle("-fx-font-size: 25px; -fx-font-weight: bold");
-            fpPublicChat.setAlignment(Pos.CENTER);
-            fpPublicChat.getChildren().add(txtPublicChat);
-            
-            taPublicChat.setPrefWidth(250);
-            taPublicChat.setPrefHeight(400);
-            taPublicChat.setEditable(false);
-            taPublicChat.setWrapText(true);
-            taPublicChat.setText("Public Chat Room\n");
-            
-         FlowPane fpChatPreset = new FlowPane(5,5);
-            fpChatPreset.setAlignment(Pos.CENTER);
-            fpChatPreset.getChildren().addAll(btnGLHF, btnGG, btnWP);
-            
-         FlowPane fpChatEnter = new FlowPane(5,5);
-            fpChatEnter.setAlignment(Pos.CENTER);
-            tfChatEnter.setPromptText("Message...");
-            tfChatEnter.setPrefColumnCount(15);
-            tfChatEnter.setOnKeyPressed(new EventHandler<KeyEvent>()
-            {
-                @Override
-                public void handle(KeyEvent keyEvent)
-                {
-                    if (keyEvent.getCode() == KeyCode.ENTER)
-                    {
-                        String text = tfChatEnter.getText();
-                        tfChatEnter.clear();
-                                       
-                        if(text.length() > 0)
-                        {
-                           taPublicChat.appendText("\nYou: " + text);
-                           sendChatMessageToServer(text);
-                        }
-                    }
-                }
-            });
-            Button btnChatEnter = new Button("Send");
-            fpChatEnter.getChildren().addAll(tfChatEnter, btnChatEnter);
-      
+      // Chat sidebar setup
+         // Public chat
+            // Sign
+      FlowPane fpPublicChat = new FlowPane(5,5);
+         Text txtPublicChat = new Text("Public Chat");
+         txtPublicChat.setStyle("-fx-font-size: 25px; -fx-font-weight: bold");
+         fpPublicChat.setAlignment(Pos.CENTER);
+         fpPublicChat.getChildren().add(txtPublicChat);
+         
+            // Public chat text area
+         taPublicChat.setPrefWidth(250);
+         taPublicChat.setPrefHeight(400);
+         taPublicChat.setEditable(false);
+         taPublicChat.setWrapText(true);
+         taPublicChat.setText("Public Chat Room\n");
+            // Reaction buttons
+      FlowPane fpChatPreset = new FlowPane(5,5);
+         fpChatPreset.setAlignment(Pos.CENTER);
+         fpChatPreset.getChildren().addAll(btnGLHF, btnGG, btnWP);
+            // Public chat enter
+      FlowPane fpChatEnter = new FlowPane(5,5);
+         fpChatEnter.setAlignment(Pos.CENTER);
+         tfChatEnter.setPromptText("Message...");
+         tfChatEnter.setPrefColumnCount(15);
+         tfChatEnter.setOnKeyPressed(new EventHandler<KeyEvent>()
+         {
+             @Override
+             public void handle(KeyEvent keyEvent)
+             {
+                 if (keyEvent.getCode() == KeyCode.ENTER)
+                 {
+                     String text = tfChatEnter.getText();
+                     tfChatEnter.clear();
+                                    
+                     if(text.length() > 0)
+                     {
+                        taPublicChat.appendText("\nYou: " + text);
+                        sendChatMessageToServer(text);
+                     }
+                 }
+             }
+         });
+         Button btnChatEnter = new Button("Send");
+         fpChatEnter.getChildren().addAll(tfChatEnter, btnChatEnter);
+   
       rootPublicChat.getChildren().addAll(/*fpMinimize,*/fpPublicChat, taPublicChat, fpChatPreset, fpChatEnter);
-
-/////////// PRIVATE CHAT
-      // Sign
+         // END Public Chat
+         
+         // Private Chat
+            // Sign
       FlowPane fpPrivateChat = new FlowPane(5,5);
          Text txtPrivateChat = new Text("Private Chat");
          txtPrivateChat.setStyle("-fx-font-size: 25px; -fx-font-weight: bold");
          fpPrivateChat.setAlignment(Pos.CENTER);
       fpPrivateChat.getChildren().add(txtPrivateChat);
       
-      // Buttons
+            // Opponent player buttons set up
       FlowPane fpPlayerSelect = new FlowPane(5,5);
          fpPlayerSelect.setAlignment(Pos.CENTER);
          synchronized(opponentsLock)
@@ -390,7 +448,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             }
          }
       
-      // Logs
+            // Private chat logs
       StackPane spPrivateChat = new StackPane();
          spPrivateChat.setAlignment(Pos.CENTER);
             taP1Chat.setPrefWidth(CHAT_WIDTH);
@@ -418,7 +476,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             taP4Chat.setText(btnP4Text + " Private Chat Room\n");
       spPrivateChat.getChildren().addAll(taP1Chat, taP2Chat, taP3Chat, taP4Chat);
       
-      // Send private
+            // Private chat enters
       FlowPane fpPrivateChatEnter = new FlowPane(5,5);
          fpPrivateChatEnter.setAlignment(Pos.CENTER);
          tfPrivateChatEnter.setPromptText("Message...");
@@ -447,7 +505,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       
       rootChat.getChildren().addAll(rootPublicChat, lblFill1, rootPrivateChat);
       
-      // CHAT setOnAction()
+      // Both chats setOnAction()
       btnChatEnter.setOnAction(this);
       btnGLHF.setOnAction(this);
       btnGG.setOnAction(this);
@@ -459,14 +517,14 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       btnP3Chat.setOnAction(this);
       btnP4Chat.setOnAction(this);
       
-      // Track UI
+      // Racing track UI
       FlowPane fpLaps = new FlowPane();
          fpLaps.setAlignment(Pos.TOP_LEFT);
          tLaps.setStyle("-fx-fill: white; -fx-font-size: 40px; -fx-font-weight: bold; -fx-stroke: black; -fx-stroke-width: 1;");
          fpLaps.getChildren().add(tLaps);
       track.getChildren().add(fpLaps);
       
-      // Track Check Points
+      // Racing track check points set up
       if(checkPoints.size() > 0)
       {
          for(Line l:checkPoints)
@@ -491,16 +549,14 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
           }
       });
       
+      // Root set up
       root.add(track, 0, 0);
       root.add(rootChat, 1, 0);
-      
-      // setOnAction
-      btnBack.setOnAction(this);
       
       // Scene
       gameScene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
       
-      // Key Listner
+      // Key Listners
       gameScene.setOnKeyPressed(
          new EventHandler<KeyEvent>() {
             @Override
@@ -555,18 +611,6 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                   if(gas) { velocity += 0.5; }
                   if(brake) { velocity -= 1.0; }
                   
-                  // Pass user commands to the Player
-                  //System.out.println("Turn: " + turn + " Velocity: " + velocity);
-                  
-                  //for(Player p:opponentPlayers)
-                  //{
-                  //   if(mainPlayer.getBody().getBoundsInParent().intersects(p.getBody().getBoundsInParent()))
-                  //   {
-                  //      System.out.println("Intersection with Player " + p.getPlayerNumber());
-                  //      //velocity = -10;
-                  //   }
-                  //}
-                  
                   mainPlayer.update(turn, velocity);
                   lastUpdate = now;
                }
@@ -578,12 +622,16 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
    /** Button dispatcher*/
    public void handle(ActionEvent ae)
    {
+      // Source button text
       Object source = ae.getSource();
       
+      // Command switch
       if(source instanceof Button)
       {
          String command = ((Button)source).getText();
          
+         // Private chat selector switch
+         // Sets command to standard value based on the players' id
          String[] parts = command.split("#");
          if(parts.length > 1)
          {
@@ -606,9 +654,10 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             }
          }
          
+         // Button commands
          switch(command)
          {
-            case "Start":
+            case "Start": // Start game
                if(tfServerIp.getText().length() > 0 &&
                   tfServerIp.getText().length() <= 20 &&
                   tfServerPassword.getText().length() <= 20 &&
@@ -618,39 +667,69 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                   Client c = new Client();
                   c.start();
                   btnStart.setDisable(true);
+                  TitleScreen.disableInterface(true);
                }
                else
                {
                   DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting the game", "One or multiple fields are missing information and/or have too many symbols");
                }
                break;
-            //case "Options":
-            //   stage.setScene(optionsScene);
-            //   stage.show();
-            //   break;
-            case "Prev. color":
+            case "Save  Config": // Save game configuration to xml
+               // Ask user for the confirmation
+               boolean saveAns = DisplayMessage.showConfirmation(this.stage, "Are you sure you want to overwrite the game config?");
+               if(saveAns)
+               {
+                  // Save config
+                  XMLSettings xmlWorker = new XMLSettings(CONFIG_FILE, serverPort, tfServerIp.getText(), tfClientName.getText(), carNameArray[carArrayIndex].toLowerCase());
+                  xmlWorker.writeXML();
+                  
+                  DisplayMessage.showAlert(stage, AlertType.INFORMATION, "Configuration saved to the XML file", xmlWorker.readXML());
+               }
+               break;
+            case "Reset Config": // Reset game configuration back to the standard
+               boolean resetAns = DisplayMessage.showConfirmation(this.stage, "Are you sure you want to reset game config?");
+               if(resetAns)
+               {
+                  // Reset config
+                  XMLSettings xmlWorker = new XMLSettings(CONFIG_FILE);
+                  xmlWorker.writeXML();
+                  
+                  DisplayMessage.showAlert(stage, AlertType.INFORMATION, "Configuration saved to the XML file", xmlWorker.readXML());
+               }
+               break;
+            case "Prev. color": // Select prev. car color
                if(carArrayIndex > 0)
                {
                   carArrayIndex--;
                   tfColorSelect.setText(carNameArray[carArrayIndex]);
                }
                break;
-            case "Next color":
+            case "Next color": // Select next car color
                if(carArrayIndex < carFileArray.length - 1)
                {
                   carArrayIndex++;
                   tfColorSelect.setText(carNameArray[carArrayIndex]);
                }
                break;
-            case "Exit":
+            case "Exit": // Exit the game
                boolean answer = DisplayMessage.showConfirmation(this.stage, "Are you sure you want to exit the application?");
-               if(answer) System.exit(0);
+               if(answer)
+               {
+                  try
+                  {
+                     if(oos != null)    oos.close();
+                     if(ois != null)    ois.close();
+                     if(socket != null) socket.close();
+                  }
+                  catch(IOException ioe)
+                  {
+                     System.out.println(ioe);
+                     System.exit(1);
+                  }
+                  System.exit(0);
+               }
                break;
-            case "Back to Title":
-               stage.setScene(titleScreenScene);
-               stage.show();
-               break;
-            case "Send":
+            case "Send": // Send public chat message
                String text = tfChatEnter.getText();
                tfChatEnter.clear();
                               
@@ -660,24 +739,25 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                   sendChatMessageToServer(text);
                }
                break;
-            case "GLHF":
+            case "GLHF": // GLHF Rection
                taPublicChat.appendText("\nYou: GLHF!");
                sendChatMessageToServer("GLHF!");
                ButtonsSleep bsGLHF = new ButtonsSleep(btnGLHF, BUTTON_SLEEP);
                bsGLHF.start();
                break;
-            case "GG":
+            case "GG": // GG Reaction
                taPublicChat.appendText("\nYou: GG");
                sendChatMessageToServer("GG");
                ButtonsSleep bsGG = new ButtonsSleep(btnGG, BUTTON_SLEEP);
                bsGG.start();
                break;
-            case "WP":
+            case "WP": // WP Reaction
                taPublicChat.appendText("\nYou: Well Played!");
                sendChatMessageToServer("Well Played!");
                ButtonsSleep bsWP = new ButtonsSleep(btnWP, BUTTON_SLEEP);
                bsWP.start();
                break;
+            // Private chat selectors
             case "Player 1":
                showPrivateChat(1);
                break;
@@ -690,74 +770,39 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             case "Player 4":
                showPrivateChat(4);
                break;
-            case "Send Private":
+            // END Private chat selectors
+            case "Send Private": // Send private chat message
                String privateText = tfPrivateChatEnter.getText();
                tfPrivateChatEnter.clear();
                               
                sendPrivateMessage(privateText);
                break;
-            case "TEST":
-               Line cp1 = new Line(0, 0, 0, 145);
-               cp1.setStyle("-fx-stroke: red;");
-               mainPlayer = new Player(gameClient, stage, playerNumber, carFileArray[carArrayIndex], 150, 550, 180, TRACK_WIDTH, TRACK_HEIGHT);
-               Pane checkPane = new Pane();
-               checkPane.getChildren().add(cp1);
-               checkPane.setTranslateX(220);
-               checkPane.setTranslateY(680);
-               System.out.println("X: " + checkPane.getTranslateX() + "  Y: " + checkPane.getTranslateY());
-               
-               createGameScene();
-               track.getChildren().addAll(checkPane, mainPlayer);
-
-               // Show the game scene
-               Platform.runLater
-               (
-                  new Runnable()
-                  {
-                     public void run()
-                     {
-                        stage.setScene(gameScene);
-                        track.requestFocus();
-                        stage.show();
-                     }
-                  }
-               );
-               break;
-            case "Save Current Configuration":
-               // Save config
-               XMLSettings xmlWorker = new XMLSettings(CONFIG_FILE, tfServerIp.getText(), tfClientName.getText(), carNameArray[carArrayIndex].toLowerCase());
-               xmlWorker.writeXML();
-               
-               DisplayMessage.showAlert(stage, AlertType.INFORMATION, "Configuration saved to the XML file", xmlWorker.readXML());
-               break;
          }
       }
-   }
+   } // END handler()
    
-   public void sendPrivateMessage(String _privateText)
+   /** Fetches all of the necessary images and sets their proportions*/
+   public void initImages()
    {
-      if(_privateText.length() > 0)
+      // Initialize images
+      try
       {
-         switch(privateChatClientNumber)
-         {
-            case 1:
-               taP1Chat.appendText("\nYou: " + _privateText);
-               break;
-            case 2:
-               taP2Chat.appendText("\nYou: " + _privateText);
-               break;
-            case 3:
-               taP3Chat.appendText("\nYou: " + _privateText);
-               break;
-            case 4:
-               taP4Chat.appendText("\nYou: " + _privateText);
-               break;
-         }
-         
-         sendPrivateChatMessageToServer(privateChatClientNumber, _privateText);
+         imgTrack = new Image(new FileInputStream(new File(TRACK_FILE_NAME)));
       }
-   }
+      catch(FileNotFoundException fnfe)
+      {
+         System.out.println(fnfe);
+      }
+      
+      // Track image view
+      imgViewTrack = new ImageView(imgTrack);
+      
+      // Image fit
+      imgViewTrack.setFitWidth(TRACK_WIDTH);
+      imgViewTrack.setFitHeight(TRACK_HEIGHT);
+   } // END initImages()
    
+   /** Game start animation*/
    class WaitBeforeStart extends Thread
    {
       public void run()
@@ -855,13 +900,23 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             }
          );
       }
-   }
+   } // END WaitBeforeStart
    
+   /** Disables a button for a set period of time*/
    class ButtonsSleep extends Thread
    {
       // Attributes
-      Button btn;
+      /** Button to put to disable*/
+      private Button btn;
+      /** Amount of time the button will stay disabled for*/
       double time;
+      
+      /**
+      * Constructor
+      *
+      * @param _btn button to disable
+      * @param _time amount of time the button will stay disabled for in milliseconds
+      */
       public ButtonsSleep(Button _btn, double _time)
       {
          this.btn = _btn;
@@ -910,25 +965,40 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             }
          );
       }
-   }
+   } // END ButtonSleep
    
+   /** 
+   * Shows a private chat based on the opponent ID
+   *
+   * @param _chatId id of the opponent
+   */
    public void showPrivateChat(int _chatId)
    {
       showPrivateChat(_chatId, "", false);
    }
    
+   /** 
+   * Shows a private chat based on the opponent ID and displays a private chat message in it
+   *
+   * @param _chatId id of the opponent
+   * @param _message message to display in the private chat
+   */
    public void showPrivateChat(int _chatId, String _message)
    {
       showPrivateChat(_chatId, _message, false);
    }
    
-   public void sendPrivateServerMessage(int _chatId, String _message)
-   {
-      showPrivateChat(_chatId, _message, true);
-   }
-   
+   /** 
+   * Shows a private chat based on the opponent ID and displays a private chat message in it.
+   * Has a boolean for sending server messages in private chats
+   *
+   * @param _chatId id of the opponent
+   * @param _message message to display in the private chat
+   * @param _serverMessage true = server message; false = not a server message;
+   */
    public void showPrivateChat(int _chatId, String _message, boolean _serverMessage)
    {
+      // Find the opponents in the list
       Opponent publicChatOp = null;
       for(Opponent op:opponents)
       {
@@ -938,28 +1008,33 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          }
       }
       
+      // Format the chat message
       String chatMessage = String.format("\n%s#%d: %s", publicChatOp.getClientName(), publicChatOp.getClientNumber(), _message);
       
+      // Show private chat and display a private message in it
       switch(_chatId)
       {
          case 1:
             
-            if(_message.length() > 0 && !_serverMessage)
+            if(_message.length() > 0 && !_serverMessage) // Player to player message
             {
                taP1Chat.appendText(chatMessage);
             }
-            else if(_serverMessage)
+            else if(_serverMessage) // Server to player message
             {
                taP1Chat.appendText("\nServer Message: " + _message);
             }
             
+            // Set chat ID number
             privateChatClientNumber = 1;
             
+            // Make chat log visible
             taP1Chat.setVisible(true);
             taP2Chat.setVisible(false);
             taP3Chat.setVisible(false);
             taP4Chat.setVisible(false);
             
+            // Change private chat button styles to display the selected chat
             btnP1Chat.setStyle("-fx-underline: true; -fx-font-weight: bold");
             btnP2Chat.setStyle("-fx-underline: false; -fx-font-weight: normal");
             btnP3Chat.setStyle("-fx-underline: false; -fx-font-weight: normal");
@@ -1035,29 +1110,53 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             btnP4Chat.setStyle("-fx-underline: true; -fx-font-weight: bold");
             break;
       }
-   }
+   } // END showPrivateChat()
    
-   /** Fetches all of the necessary images and sets their proportions*/
-   public void initImages()
+   /** 
+   * Sends a private chat message based on the selected private chat id
+   *
+   * @param _privateText chat message
+   */
+   public void sendPrivateMessage(String _privateText)
    {
-      // Initialize images
-      try
+      if(_privateText.length() > 0)
       {
-         imgTrack = new Image(new FileInputStream(new File(TRACK_FILE_NAME)));
+         switch(privateChatClientNumber)
+         {
+            case 1:
+               taP1Chat.appendText("\nYou: " + _privateText);
+               break;
+            case 2:
+               taP2Chat.appendText("\nYou: " + _privateText);
+               break;
+            case 3:
+               taP3Chat.appendText("\nYou: " + _privateText);
+               break;
+            case 4:
+               taP4Chat.appendText("\nYou: " + _privateText);
+               break;
+         }
+         
+         sendPrivateChatMessageToServer(privateChatClientNumber, _privateText);
       }
-      catch(FileNotFoundException fnfe)
-      {
-         System.out.println(fnfe);
-      }
-      
-      // Track image view
-      imgViewTrack = new ImageView(imgTrack);
-      
-      // Image fit
-      imgViewTrack.setFitWidth(TRACK_WIDTH);
-      imgViewTrack.setFitHeight(TRACK_HEIGHT);
-   }
+   } // END sendPrivateMessage()
    
+   /**
+   * Sends a private chat message that displays as a server message
+   *
+   * @param _chatId id of the sender (-1 for the server)
+   * @param _message server message
+   */
+   public void sendPrivateServerMessage(int _chatId, String _message)
+   {
+      showPrivateChat(_chatId, _message, true);
+   } // END sendPrivateServerMessage()
+   
+   /** 
+   * Sends a public chat message to the server
+   *
+   * @param _message public chat message to send to the server
+   */
    public void sendChatMessageToServer(String _message)
    {
       // Request
@@ -1074,8 +1173,14 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       {
          DisplayMessage.showAlert(stage, AlertType.ERROR, "Error sending coordinates to the server", ioe + "");
       }
-   }
+   } // END sendChatMessageToServer()
    
+   /** 
+   * Sends a private chat message to the server
+   *
+   * @param _recipientNumber recipient client ID
+   * @param _message private chat message to send to the server
+   */
    public void sendPrivateChatMessageToServer(int _recipientNumber, String _message)
    {
       // Request
@@ -1093,8 +1198,15 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
       {
          DisplayMessage.showAlert(stage, AlertType.ERROR, "Error sending coordinates to the server", ioe + "");
       }
-   }
+   } // END sendPrivateChatMessageToServer()
    
+   /**
+   * Sends client's car coordinates to the server
+   *
+   * @param x X coordinate of the car
+   * @param y Y coordinate of the car
+   * @param degree rotation of the car in degrees
+   */
    public void sendCoordinatesToServer(double x, double y, double degree)
    {
       if(!error)
@@ -1118,11 +1230,13 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             error = true;
          }
       }
-   }
+   } // END sendCoordinatesToServer()
    
+   /** A class responsible for the client server communication*/
    class Client extends Thread
    {
       // Synchronization
+      /** Local client synchronization object*/
       private Object lock = new Object();
       
       public void run()
@@ -1149,6 +1263,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
             {
                DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", "Wrong Password");
                btnStart.setDisable(false);
+               TitleScreen.disableInterface(false);
             }
          }
          catch(ClassNotFoundException cnfe)
@@ -1159,16 +1274,19 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
          {
             DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", uhe + "");
             btnStart.setDisable(false);
+            TitleScreen.disableInterface(false);
          }
          catch(ConnectException ce)
          {
             DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", ce + "");
             btnStart.setDisable(false);
+            TitleScreen.disableInterface(false);
          }
          catch(IOException ioe)
          {
             DisplayMessage.showAlert(stage, AlertType.ERROR, "Error connecting to the server", ioe + "");
             btnStart.setDisable(false);
+            TitleScreen.disableInterface(false);
          }
          
          // Start listening to server inputs
@@ -1235,7 +1353,6 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         mainStartX = (double)ois.readObject();
                         mainStartY = (double)ois.readObject();
                         mainStartDegree = (double)ois.readObject();
-                        //System.out.println("sX: " + mainStartX + "   sY: " + mainStartY);
                      
                         // Initialize check points
                         CheckPoint[] cpArray = (CheckPoint[])ois.readObject();
@@ -1261,7 +1378,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         error = true;
                      }
                      break;
-                  case "INIT_OPPONENT":
+                  case "INIT_OPPONENT": // Initialize opponent player
                      try
                      {
                         Opponent op = (Opponent)ois.readObject();
@@ -1269,8 +1386,6 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         {
                            opponents.add(op);
                         }
-                        //DisplayMessage.showAlert(stage, AlertType.INFORMATION, "INIT_OPPONENT: Opponent Info received", op + "");
-                        //System.out.println("Player" + playerNumber + " INIT_OPPONENT: " + op);
                      }
                      catch(ClassNotFoundException cnfe)
                      {
@@ -1283,14 +1398,8 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         error = true;
                      }
                      break; // INIT_OPPONENT
-                  case "START_GAME":
-                     //System.out.println("\nSTART_GAME RECEIVED\n");
-                     
-                     // Create the main player
-                     // PlayerNumber, NameOfCarFile, StartPosX, StartPosY, StartRotation(degrees)      
+                  case "START_GAME": // Start game    
                      mainPlayer = new Player(gameClient, stage, playerNumber, carFileArray[carArrayIndex], mainStartX, mainStartY, mainStartDegree, TRACK_WIDTH, TRACK_HEIGHT);
-                     //mainPlayer = new Player(this.stage, playerNumber, carFileArray[carArrayIndex], 0, 0, mainStartDegree, TRACK_WIDTH, TRACK_HEIGHT);
-                     //System.out.println("sX: " + mainStartX + "   sY: " + mainStartY);
 
                      createGameScene();
                      // Create opponents as players
@@ -1299,12 +1408,10 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         for(Opponent op:opponents)
                         {
                            Player plOp = new Player(gameClient, stage, op.getClientNumber(), op.getCarFileName(), op.getStartX(), op.getStartY(), op.getStartDegree(), TRACK_WIDTH, TRACK_HEIGHT);
-                           //Player plOp = new Player(stage, op.getClientNumber(), op.getCarFileName(), 0, 0, op.getStartDegree(), TRACK_WIDTH, TRACK_HEIGHT);
                            synchronized(opponentPlayersLock)
                            {
                               opponentPlayers.add(plOp);
                            }
-                           //System.out.println(op);
                         }
                      }
                      
@@ -1313,12 +1420,9 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         for(Player p:opponentPlayers)
                         {
                            track.getChildren().add(p);
-                           //System.out.println(p);
-                           //System.out.println(p.getCoordinates());
                         }
                      }
                      track.getChildren().add(mainPlayer);
-                     //System.out.println(mainPlayer.getCoordinates());
                      
                      // Show the game scene
                      Platform.runLater
@@ -1336,7 +1440,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      WaitBeforeStart wbs = new WaitBeforeStart();
                      wbs.start();
                      break; // START_GAME
-                  case "UPDATE_OPPONENT":
+                  case "UPDATE_OPPONENT": // Update opponent's car location
                      synchronized(lock)
                      {
                         CoordinateSet cs = null;
@@ -1362,13 +1466,12 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                               if(p.getPlayerNumber() == cs.getClientNumber() && cs != null)
                               {
                                  p.setCoordinates(cs.getX(), cs.getY(), cs.getDegree());
-                                 //System.out.println(String.format("UC: X:%f  Y:%f  DEG:%f", cs.getX(), cs.getY(), cs.getDegree()));
                               }
                            }
                         }
                      }
                      break; // UPDATE_OPPONENT
-                  case "RECEIVE_MESSAGE":
+                  case "RECEIVE_MESSAGE": // Receive a public chat message
                      int senderId = 0;
                      String message = "";
                      synchronized(lock)
@@ -1411,7 +1514,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         taPublicChat.appendText("\n" + chatMessage);
                      }
                      break; // RECEIVE_MESSAGE
-                  case "RECEIVE_PRIVATE_MESSAGE":
+                  case "RECEIVE_PRIVATE_MESSAGE": // Receive a private chat message
                      int privateSenderId = 0;
                      String privateMessage = "";
                      synchronized(lock)
@@ -1435,13 +1538,12 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      
                      showPrivateChat(privateSenderId, privateMessage);
                      break; // RECEIVE_PRIVATE_MESSAGE
-                  case "DISCONNECT_OPPONENT":
-                     //System.out.println("DISCONNECT_OPPONENT");
+                  case "DISCONNECT_OPPONENT": // Remove an opponent from the game
                      int opponentToDisconnect = -1;
                      synchronized(lock)
                      {
                         try
-                        {
+                        {  // Get opponent's ID
                            opponentToDisconnect = (Integer)ois.readObject();
                         }
                         catch(ClassNotFoundException cnfe)
@@ -1463,7 +1565,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         synchronized(opponentsLock)
                         {
                            for(Opponent op:opponents)
-                           {
+                           {  // Get the Opponent object
                               if(op.getClientNumber() == opponentToDisconnect)
                               {
                                  disconnectedOp = op;
@@ -1472,6 +1574,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                            }
                         }
                         
+                        // Display opponent disconnection message
                         String serverMessage = disconnectedOp.getClientName() + "#" + disconnectedOp.getClientNumber() + " disconnected.";
                         taPublicChat.appendText("\nServer Message: " + serverMessage + "\n");
                         sendPrivateServerMessage(opponentToDisconnect, serverMessage);
@@ -1479,12 +1582,11 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         synchronized(opponentsLock)
                         {
                            for(Opponent op:opponents)
-                           {
+                           {  // Remove Opponent object
                               if(op.getClientNumber() == opponentToDisconnect)
                               {
                                  disconnectedOp = op;
                                  opponents.remove(op);
-                                 //System.out.println("Removed " + op.getClientName() + "#" + op.getClientNumber());
                                  break;
                               }
                            }
@@ -1493,7 +1595,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         synchronized(opponentPlayersLock)
                         {
                            for(Player p:opponentPlayers)
-                           {
+                           {  // Hide the removed opponent's car and remove their Player object
                               if(p.getPlayerNumber() == opponentToDisconnect)
                               {
                                  p.hideCar();
@@ -1504,14 +1606,14 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         }
                      } // if opponent to disconnect exists
                      break; // DISCONNECT_OPPONENT
-                  case "UPDATE_CHECKPOINT":
+                  case "UPDATE_CHECKPOINT": // Update the active check point number
                      if(currentCheckPoint - 1 >= 0) checkPoints.get(currentCheckPoint - 1).setVisible(false);
                      checkPoints.get(currentCheckPoint).setStyle("-fx-stroke: green;");
                      currentCheckPoint++;
                      checkPoints.get(currentCheckPoint).setStyle("-fx-stroke: red;");
                      checkPoints.get(currentCheckPoint).setVisible(true);
                      break; // UPDATE_CHECKPOINT
-                  case "UPDATE_LAP":
+                  case "UPDATE_LAP": // Update lap number
                      // Remove the line before the finish line
                      if(currentCheckPoint - 1 >= 0) checkPoints.get(currentCheckPoint - 1).setVisible(false);
                      
@@ -1533,7 +1635,7 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                      currentLap++;
                      tLaps.setText("Lap: " + currentLap + "/" + numOfLaps);
                      break;
-                  case "STOP_GAME":
+                  case "STOP_GAME": // Stop game when someone wins
                      int winnerNumber = -1;
                      synchronized(lock)
                      {
@@ -1553,160 +1655,31 @@ public class GameClient extends Application implements EventHandler<ActionEvent>
                         }
                      }
                      if(winnerNumber == playerNumber)
-                     {
-                        //System.out.println("I WON!");
+                     {  // If client won
                         tLaps.setText("Finish!");
                         tFinish.setText("Congratulations\nYou won! (*^ W ^*)");
                         tFinish.setVisible(true);
                         checkPoints.get(checkPoints.size() - 1).setStyle("-fx-stroke: green;");
                      }
                      else
-                     {
-                        //System.out.println("I LOST :(");
+                     {  // If client lost
                         tLaps.setText("Finish!");
                         tFinish.setText("You lost ( ; _ ;)");
                         tFinish.setVisible(true);
                      }
                      break;
                      
-               } // switch(command)
-            } // if instanceof String
-         } // while(true)
-      } // run()
-   } // Client
+               } // END switch(command)
+            } // END if instanceof String
+         } // END while(true)
+      } // END run()
+   } // END Client
    
-   class XMLSettings
-   {
-      // Attributes - properties
-         // Socket
-      public String serverIP = "127.0.0.1";
-      public int serverPort = 42069;
-         // Game Settings
-      public String nickname = " ";
-      public String carColor = "blue";
-      
-      // Private properties
-      private String xmlFilePath = "";
-      
-      // Constructor
-      public XMLSettings(String _fileName)
-      {
-         this.xmlFilePath = _fileName;
-      }
-      
-      public XMLSettings(String _fileName, String _serverIP, String _nickname, String _carColor)
-      {
-         this.xmlFilePath = _fileName;
-         this.serverIP = _serverIP;
-         this.nickname = _nickname;
-         this.carColor = _carColor;
-      }
-      
-      public void writeXML()
-      {
-         try {
-            DocumentBuilderFactory dbFactory =
-               DocumentBuilderFactory.newInstance();
-            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-            Document doc = dBuilder.newDocument();
-         
-         // root element
-            Element rootElement = doc.createElement("GameSettings");
-            doc.appendChild(rootElement);
-         
-         // socket
-            Element socket = doc.createElement("Socket");
-            rootElement.appendChild(socket);
-         
-            // port
-            Element port = doc.createElement("port");
-            port.appendChild(doc.createTextNode(this.serverPort+""));
-            socket.appendChild(port);
-            // server ip
-            Element serverIp = doc.createElement("serverIP");
-            serverIp.appendChild(doc.createTextNode(this.serverIP+""));
-            socket.appendChild(serverIp);
-            
-         // game settings
-            Element gameSettings = doc.createElement("Game_Settings");
-            rootElement.appendChild(gameSettings);
-            
-            // nickname
-            Element nicknameE = doc.createElement("nickname");
-            nicknameE.appendChild(doc.createTextNode(this.nickname+""));
-            gameSettings.appendChild(nicknameE);
-            
-            // car color
-            Element carColorE = doc.createElement("car_color");
-            carColorE.appendChild(doc.createTextNode(this.carColor+""));
-            gameSettings.appendChild(carColorE);
-         
-         // write the content into xml file
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            Transformer transformer = transformerFactory.newTransformer();
-            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
-            DOMSource source = new DOMSource(doc);
-            StreamResult result = new StreamResult(new File(this.xmlFilePath));
-            transformer.transform(source, result);
-         
-         // Output to console for testing
-            StreamResult consoleResult = new StreamResult(System.out);
-            transformer.transform(source, consoleResult);
-         } catch (Exception e) {
-            e.printStackTrace();
-         }  
-      }// end of writeXML
-      
-       public String readXML()
-       {
-         try{
-            DocumentBuilderFactory dbfactory= DocumentBuilderFactory.newInstance();
-            DocumentBuilder builder = dbfactory.newDocumentBuilder();
-            XPathFactory xpfactory = XPathFactory.newInstance();
-            XPath path = xpfactory.newXPath();
-         
-            File f = new File(this.xmlFilePath);
-            Document doc = builder.parse(f);
-            
-            this.serverPort = Integer.parseInt(path.evaluate(
-                  "/GameSettings/Socket/port", doc));
-                  
-            this.serverIP = path.evaluate(
-                  "/GameSettings/Socket/serverIP", doc);
-                  
-            this.nickname = path.evaluate(
-                  "/GameSettings/Game_Settings/nickname", doc);
-                  
-            this.carColor = path.evaluate(
-                  "/GameSettings/Game_Settings/car_color", doc);
-         
-            return ("Current configuration: \nServer Port: " + this.serverPort + "    Server IP: " + this.serverIP + "\nNickname: " + this.nickname + "    Car color: " + this.carColor);         
-         
-         }
-         catch(XPathExpressionException xpee)
-         {
-            System.out.println(xpee);
-         }
-         catch(ParserConfigurationException pce)
-         {
-            System.out.println(pce);
-         }
-         catch(SAXException saxe)
-         {
-            System.out.println(saxe);
-         }
-         catch(IOException ioe)
-         {
-            System.out.println(ioe);
-         
-         }
-         
-         return "ERROR";
-      }//end of readXML
-   }
-
-   
+   /**
+   * Main method
+   *
+   * @param args game client run parameters
+   */
    public static void main(String[] args) {
         launch(args);
     }

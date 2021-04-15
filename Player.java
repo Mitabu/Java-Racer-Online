@@ -21,57 +21,85 @@ import java.util.ArrayList;
 
 /**
 *  @author Artem Polkovnikov
-*  @version 01.04.2021
+*  @version 14.04.2021
 */
 
+/** A pane that contains the player's car and calculates it's movement based on player inputs*/
 public class Player extends Pane
 {
    // Attributes
    
    // GameClient
+   /** Game client object for sending coordinates to the game server*/
    private GameClient gameClient = null;
    
    // Player
+   /** Player's nickname*/
    private String playerName;
+   /** Player's ID number*/
    private int playerNumber;
    
    // Car
+   
       // Track border
+   /** X coordinate of the track border*/
    private double trackBorderX;
+   /** Y coordinate of the track border*/
    private double trackBorderY;
+   
       // Car Image
+   /** Player's car file name*/
    private String carFileName;
+   /** Player's car image*/
    private Image carImage = null;
+   /** Player's car imageView*/
    private ImageView carImageView = null;
+   
       // Car Dimensions
+   /** Height of the player's car in pixels*/
    private static double carHeight; // Pixels
+   /** Width of the player's car in pixels*/
    private static double carWidth; // Pixels
+   /** Distance between the wheels of the player's car in pixels*/
    private static double distanceBetweenWheels = 50; // Pixels
+      
       // Car position
+   /** Car center X coordinate*/
    private double carCenterX;
+   /** Car center Y coordinate*/
    private double carCenterY;
+      
       // Car movement
+   /** Car center position*/
    private Position carCenterLocation; // Top left corner (actual position of the image)
+   /** Car's rotation in degrees*/
    private double carHeadingDegree;
+   /** Vector of the car's velocity*/
    private Vector2 velocity; // Vector of velocity
-   private Position wheelBase; // Center of the car (position of the center of the car)
+   /** Car's velocity in a given frame*/
    private double currentVelocity = 0.0;
+   /** Car's steering angle in a given frame*/
    private double currentSteeringAngle = 0.0;
+   /** Car's maximum speed in pixels per second*/
    private double carMaxSpeed = 75; // Pixels/Second
+   /** Car's maximum reverse speed (half of the maximum speed)*/
    private double carMaxReverseSpeed = -(carMaxSpeed / 2);
+   /** Maximum steering angle*/
    private double steeringAngleMaximum = 30; // Degrees
+   /** Value of the steering stiffness (higher value = takes longer to engage a full turn)*/
    private double steeringStiffness = 15; // Higher = Stiffer
+   /** Value by which velocity is divided in order to get velocity in a given frame*/
    private double deltaTime = 10;
+      
       // Physics
+   /** Friction value that stops the car when car isn't accelerating*/
    private double friction = 0.5; // Pixels/Frame
-      // DEBUG
-      //
-      //
-   //private Circle centerCircle = null;
+   
    
    /**
    * Constructor
    *
+   * @param _gc game client for transmitting coordinates to the server
    * @param _ownerStage the stage on which the player is show (a reference for alerts)
    * @param _playerNumber the number of the player
    * @param _carImageName the name of the car image file
@@ -83,6 +111,7 @@ public class Player extends Pane
    */
    public Player(GameClient _gc, Stage _ownerStage, int _playerNumber, String _carImageName, double _startX, double _startY, double _startRotation, double _trackWidth, double _trackHeight)
    {
+      // Initiate player parameters
       this.gameClient = _gc;
       this.playerNumber = _playerNumber;
       this.playerName = "Player" + _playerNumber;
@@ -90,6 +119,7 @@ public class Player extends Pane
       this.trackBorderY = _trackHeight;
       this.carFileName = _carImageName;
       
+      // Fetch car image and get its dimentions
       try
       {
          FileInputStream fis = new FileInputStream(new File(_carImageName));
@@ -110,7 +140,7 @@ public class Player extends Pane
          DisplayMessage.showAlert(_ownerStage, AlertType.ERROR, "An error occured when fetching car image for " + this.playerName, ioe+"");
       }
       
-      // Rotate car to face the right direction
+      // Rotate car to face the starting direction
       this.carHeadingDegree = _startRotation;
       carImageView.setRotate(carHeadingDegree);
       
@@ -122,37 +152,49 @@ public class Player extends Pane
       double startX = _startX - carCenterX; // Centering cause translation is set for the origin (top left corner)
       double startY = _startY - carCenterY;
       
+      // Translate the car's imageView to the starting position
       carImageView.setTranslateX(startX);
       carImageView.setTranslateY(startY);
-      //centerCircle = new Circle(40/2, 70/2, 5);
-      //System.out.println("CarStartX: " + startX + " CarStartY: " + startY);
       
       // Record initial position of the car as a Position
       carCenterLocation = new Position(_startX, _startY);
-      //System.out.println("Init car location " + carCenterLocation);
       
-      // Add car image to THIS
+      // Add car image to this pane
       this.getChildren().addAll(carImageView /*, centerCircle*/);
-      
-      // Set wheel base
-      wheelBase = new Position(_startX, _startY);
-      //System.out.println("\nWheel base: " + wheelBase + "\nCar Height: " + carHeight);
-   
-      //System.out.println(this.playerName);
    }
    
-   /** Returns the steering angle value*/
+   /** 
+   * Returns the steering angle value
+   *
+   * @return current steering angle value
+   */
    public double getSteerAngle() {return this.currentSteeringAngle;}
-   /** Returns the name of the car image file*/
+   
+   /**
+   * Returns the name of the car image file
+   *
+   * @return car file name
+   */
    public String getCarFileName() {return this.carFileName;}
    
+   /**
+   * Returns player's ID number
+   *
+   * @return player's ID number
+   */
    public int getPlayerNumber() {return this.playerNumber;}
    
+   /**
+   * Returns current position alongside player's ID
+   *
+   * @return player's ID and coordinates
+   */
    public String getCoordinates()
    {
       return String.format("Player%d   iX: %f   iY:%f", playerNumber, carImageView.getX(), carImageView.getY());
    }
    
+   /** Sets player's car imageView invisible*/
    public void hideCar()
    {
       Platform.runLater
@@ -167,6 +209,13 @@ public class Player extends Pane
       );
    }
    
+   /**
+   * Directly sets coordinates of the player's car
+   *
+   * @param _x X coordinate
+   * @param _y Y coordinate
+   * @param _degree rotation in degrees
+   */
    public void setCoordinates(double _x, double _y, double _degree)
    {
       Platform.runLater
@@ -184,7 +233,7 @@ public class Player extends Pane
    }   
    
    /**
-   * Updates the position of the car
+   * Updates the position of the car using car movement algorithm
    * 
    * @param _turn shows in which direction the wheel is turned
    * @param _velocity the direction in which the velocity is added (if gas is pressed +1, if brake is pressed -1)
@@ -192,6 +241,7 @@ public class Player extends Pane
    public void update(int _turn, double _velocity)
    {         
       // Set up the car's current velocity
+      
       if(_velocity > 0)
       {
          currentVelocity += _velocity;
@@ -275,12 +325,9 @@ public class Player extends Pane
             }
          }
       }
-      //CHECK
-      //System.out.println(currentVelocity);
-      //System.out.println(currentSteeringAngle);
       
       // Calculate the position based on steering
-      // Velocity is divided by the number of frames
+      // Velocity is divided by the delta of time
       // Current velocity is in pixels/second
       calculateSteering(currentSteeringAngle, (currentVelocity / deltaTime));
    } // END update()
@@ -290,7 +337,7 @@ public class Player extends Pane
    * Author of idea - http://engineeringdotnet.blogspot.com/2010/04/simple-2d-car-physics-in-games.html?m=1
    * Author of implementation - Artem Polkovnkov
    *
-   * @param _trun shows in which direction the wheel is turned
+   * @param _turn shows in which direction the wheel is turned
    * @param _currentVelocity the velocity of the car in the frame
    */
    private void calculateSteering(double _turn, double _currentVelocity)
@@ -304,36 +351,23 @@ public class Player extends Pane
       
       Vector2 posVector = new Vector2(); // Create horizontal unit vector
       posVector.dot(distanceBetweenWheels / 2); // MULTIPLY unit vector by the distance between wheels / 2
-      //CHECK
-      //System.out.println(posVector);
-      
       posVector.rotatedBy(carHeadingDegree); // ROTATE the position vector by the carHeadingDegree
-      //CHECK
-      //System.out.println(posVector);
       
+      // Front wheel position
          // Copy position of the car into a vector
       Vector2 centerOfTheCar = new Vector2(carCenterLocation.getX() , carCenterLocation.getY());
-      //System.out.println("1: " + centerOfTheCar);
          // Add posVector to the position of the car
       centerOfTheCar.add(posVector);
          // Record the resulting position of the front wheels
       Position frontWheel = new Position(centerOfTheCar.getX() , centerOfTheCar.getY());
-      //System.out.println(frontWheel);
       
+      // Back wheel position
       Vector2 centerOfTheCar2 = new Vector2(carCenterLocation.getX() , carCenterLocation.getY());
-      //System.out.println("2: " + centerOfTheCar2);
       centerOfTheCar2.subtract(posVector);
       Position backWheel = new Position(centerOfTheCar2.getX() , centerOfTheCar2.getY());
-      //System.out.println(backWheel);
-      //CHECK
-      //System.out.println("Back: " + backWheel + "\n" + "Front: " + frontWheel);
-      
       //
       // WHEELS POSITION CALCULATED
       //
-      
-      
-      
       
       
       
@@ -342,7 +376,7 @@ public class Player extends Pane
       // Add vector of the movement to each wheels' position
       //
       
-      ////BACK WHEEL////
+      // Back wheel
          // Create backWheelVector for calculations
       Vector2 backWheelVector = new Vector2(backWheel.getX() , backWheel.getY());
          // Create vector for backWheelMovement
@@ -359,17 +393,13 @@ public class Player extends Pane
       
       if(Double.isNaN(backWheelVector.getX()) || Double.isNaN(backWheelVector.getY()))
       {
-         //System.out.println("NOT MOVING");
          backWheelVector.setX(backWheel.getX());
          backWheelVector.setY(backWheel.getY());
          
          dontChangeAngle = true;
       }
-      //CHECK
-      //System.out.println(backWheelVector);
       
-      
-      ////FRONT WHEEL////
+      // Front wheel
          // Create frontWheelVector for calculations
       Vector2 frontWheelVector = new Vector2(frontWheel.getX() , frontWheel.getY());
          // Create vector for backWheelMovement
@@ -378,7 +408,6 @@ public class Player extends Pane
       frontWheelMovement.dot(_currentVelocity);
          // Rotate frontWheelMovement vector to match the car rotation (carHeadingDegree + (_turn * steerAngle))
       frontWheelMovement.rotatedBy(carHeadingDegree + _turn);
-      //System.out.println(carHeadingDegree - (_turn * steerAngle));
          // Add movement to the backWheelVector
       frontWheelVector.add(frontWheelMovement);
       
@@ -389,35 +418,22 @@ public class Player extends Pane
          frontWheelVector.setX(frontWheel.getX());
          frontWheelVector.setY(frontWheel.getY());
          dontChangeAngle = true;
-      }
-      //CHECK
-      //System.out.println(frontWheelVector);
-      
+      }      
       //
       // WHEELS POSITION IN THE NEXT FRAME CALCULATED
       //
       
       
       
-      
-      
-      
       // Approximate the car position in the next frame based on the position of the wheels
       //
       //
-      
       Vector2 tempFront = new Vector2(frontWheelVector);
       Vector2 tempBack = new Vector2(backWheelVector);
       
-      ////carLocation = (frontWheel + backWheel) / 2;
       Vector2 carBody = tempFront.add(tempBack).dot(Math.pow(2, -1));
-      //CHECK
-      //System.out.println(carBody);
-      
-      // Add car movement to the car position
-      // Record new car position into car and move the car
             
-      // STOP AT BORDERS (WILL LIKELY BE CHANGED LATER)
+      // Stop at track borders
       double xOffset = carWidth; // -(carHeight / 4) to make it stop at the line
       double yOffset = 0;
       double minusXOffset = carWidth;
@@ -444,32 +460,29 @@ public class Player extends Pane
          currentVelocity *= 0.8;
       }
       
+      // Add car movement to the car position
+      // Record new car position into car and move the car
       carCenterLocation.setX(carBody.getX());
       carCenterLocation.setY(carBody.getY());
-      //CHECK
-      //System.out.println(carCenterLocation + "\n" + carBody);
-      
       //
       // CAR POSITION CALCULATED
       //
       
       
       
-      
-      
-      
       // Find the new angle the car is facing
       //
-      
       double fy = frontWheelVector.getY();
       double fx = frontWheelVector.getX();
       
       double by = backWheelVector.getY();
       double bx = backWheelVector.getX();
       
+      // Get new car heading
       double newCarHeading = Math.toDegrees(  Math.atan2(fy - by, fx - bx)  ) + 90;
       this.carHeadingDegree = newCarHeading;
       
+      // Set new car coordinates and heading
       Platform.runLater
       (
          new Runnable()
@@ -478,24 +491,20 @@ public class Player extends Pane
             {
                carImageView.setTranslateX(carCenterLocation.getX() - (carWidth / 2));
                carImageView.setTranslateY(carCenterLocation.getY() - (carHeight / 2));
-               //centerCircle.setTranslateX(carCenterLocation.getX() - (carWidth / 2));
-               //centerCircle.setTranslateY(carCenterLocation.getY() - (carHeight / 2));
                carImageView.setRotate(carHeadingDegree);
-               //System.out.println("X: " + centerCircle.getTranslateX() + "  Y: " + centerCircle.getTranslateY());
             }
          }
       );
       
-      
-      //CHECK
-      //String coordinates = String.format("Front wheel - X: %.2f Y: %.2f    Back wheel - X: %.2f Y: %.2f", frontWheelVector.getX(), frontWheelVector.getY(), backWheelVector.getX(), backWheelVector.getY());
-      //System.out.println(coordinates);
-      //System.out.println(newCarHeading);
-      
-      // SEND COORDINATES TO THE SERVER
+      // Send calculated coordinates to the server
       gameClient.sendCoordinatesToServer(carCenterLocation.getX() - (carWidth / 2), carCenterLocation.getY() - (carHeight / 2), this.carHeadingDegree);
    } // END calculateSteering()
    
+   /**
+   * Returns formatted player information
+   *
+   * @return formatted player information
+   */
    public String toString()
    {
       return String.format("Player: %s.   Car File Name: %s",this.playerName, this.carFileName);

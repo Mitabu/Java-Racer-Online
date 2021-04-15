@@ -13,40 +13,64 @@ import javafx.scene.shape.*;
 
 /**
 *  @author Artem Polkovnikov
-*  @version 16.03.2021
+*  @version 14.04.2021
 */
 
 /** Creates title screen scene*/
 public class TitleScreen
 {
    // Attributes
+         
          // ROOT
+   /** Root pane of the scene*/
    private static VBox root;
+         
          // GUI
+   /** Game exit button*/
    private static Button btnExit = new Button("Exit");
-   private static Button btnOptions = new Button("Options");
+   /** Game start button*/
    private static Button btnStart = null;
-   private static Button btnTest = new Button("TEST");
-   private static Button btnSaveConfig = new Button("Save Current Configuration");
+   /** Configuration save button*/
+   private static Button btnSaveConfig = new Button("Save  Config");
+   /** Configuration reset button*/
+   private static Button btnResetConfig = new Button("Reset Config");
+   /** Label that stores a 'waiting for other' players message*/
    private static Label lblWaitingForPlayers = new Label("Connected to the server. The game will start as soon as all players connect.");
+         
          // Log In
+   /** Server IP text field*/
    private static TextField tfServerIp = null;
-   private static String presetTextServerIP;
+   /** Standard server IP from config*/
+   private static String presetTextServerIP = null;
+   /** Game password text field*/
    private static TextField tfServerPassword = null;
+   /** Player's nickname text field*/
    private static TextField tfClientName = null;
-   private static String presetTextNickname;
+   /** Standard player's nickname from config*/
+   private static String presetTextNickname = null;
+   
          // Car Color Select
+   /** Pane for storing car color select controls*/
    private static FlowPane fpColorSelect;
+   /** Previous car color button*/
    private static Button btnPrev = new Button("Prev. color");
+   /** Selected car color text field*/
    private static TextField tfColorSelect = null;
-   private static String selectedColor;
+   /** Standard car color from config*/
+   private static String selectedColor = null;
+   /** Next car color button*/
    private static Button btnNext = new Button("Next color");
+   
          // Title Screen Scene
+   /** Title screen scene*/
    private static Scene titleScreen;
+   /** Width of the scene in pixels*/
    private static int screenWidth;
+   /** Height of the scene in pixels*/
    private static int screenHeight;
       
       // EventHandler
+   /** EventHandelr for buttons*/
    private static EventHandler<ActionEvent> ae;
    
    /**
@@ -55,6 +79,16 @@ public class TitleScreen
    * @param _ae an event handler object for the options scene buttons
    * @param _screenWidth the width of the application window in pixels
    * @param _screenHeight the height of the application window in pixels
+   * @param _tfServerIp text field for the server IP
+   * @param _tfServerPassword text field for the game password
+   * @param _tfClientName text field for the player's nickname
+   * @param _btnStart button for starting the game
+   * @param _tfColorSelect text field for displaying selected car color
+   * @param _selectedColor car color from the config
+   * @param _serverIP server IP from the config
+   * @param _nickname player's nickname from the config
+   *
+   * @return title screen scene
    */
    public static Scene getScene(EventHandler<ActionEvent> _ae, int _screenWidth, int _screenHeight, TextField _tfServerIp, TextField _tfServerPassword, TextField _tfClientName, Button _btnStart, TextField _tfColorSelect, String _selectedColor, String _serverIP, String _nickname)
    {
@@ -78,6 +112,7 @@ public class TitleScreen
       return titleScreen;
    }
    
+   /** Makes the 'waiting for players' message visible on the scene*/
    public static void showConnectionMessage()
    {
       lblWaitingForPlayers.setVisible(true);
@@ -86,25 +121,39 @@ public class TitleScreen
    /** Sets up the title screen scene and its elements*/
    private static void createTitleScreen()
    {
-      // LABEL
+      // Game Logo
       FlowPane fpLabel = new FlowPane();
          fpLabel.setAlignment(Pos.CENTER);
          Label lbl = new Label("Java Racer Online");
          lbl.setStyle("-fx-font-size: 40px; -fx-font-weight: bold");
          fpLabel.getChildren().add(lbl);
-      // Server selection
+      
+      // Start game button
+      FlowPane fpStart = new FlowPane();
+         fpStart.setAlignment(Pos.CENTER);
+         fpStart.getChildren().add(btnStart);
+      
+      // Game configuration buttons
+      FlowPane fpConfig = new FlowPane();
+         Label lblSeparator = new Label("  ||  ");
+         fpConfig.setAlignment(Pos.CENTER);
+         fpConfig.getChildren().addAll(btnSaveConfig, lblSeparator, btnResetConfig);
+      
+      // Server IP selection
       FlowPane fpServerIp = new FlowPane(5,5);
          fpServerIp.setAlignment(Pos.CENTER);
          Label lblServerIp = new Label("Server IP: ");
          tfServerIp.setPromptText("Server IP (1 to 20 char)");
          tfServerIp.setText(presetTextServerIP);
-         fpServerIp.getChildren().addAll(/*lblServerIp,*/ tfServerIp);
-      // Server log in
+         fpServerIp.getChildren().add(tfServerIp);
+      
+      // Server log in (password)
       FlowPane fpServerPassword = new FlowPane(5,5);
          fpServerPassword.setAlignment(Pos.CENTER);
          Label lblServerPassword = new Label("Password: ");
          tfServerPassword.setPromptText("Password (1 to 20 char)");
-         fpServerPassword.getChildren().addAll(/*lblServerPassword,*/ tfServerPassword);
+         fpServerPassword.getChildren().addAll(tfServerPassword);
+      
       // Nickname
       FlowPane fpClientName = new FlowPane(5,5);
          fpClientName.setAlignment(Pos.CENTER);
@@ -114,25 +163,7 @@ public class TitleScreen
          {
             tfClientName.setText(presetTextNickname);
          }
-         fpClientName.getChildren().addAll(/*lblClientName,*/ tfClientName);
-      // TEST
-      FlowPane fpTest = new FlowPane();
-         fpTest.setAlignment(Pos.CENTER);
-         fpTest.getChildren().add(btnTest);
-      
-      // Start
-      FlowPane fpStart = new FlowPane();
-         fpStart.setAlignment(Pos.CENTER);
-         fpStart.getChildren().add(btnStart);
-      // Save configuration
-      FlowPane fpSaveConfig = new FlowPane();
-         fpSaveConfig.setAlignment(Pos.CENTER);
-         fpSaveConfig.getChildren().add(btnSaveConfig);
-         
-      // Options
-      //FlowPane fpOptions = new FlowPane();
-      //   fpOptions.setAlignment(Pos.CENTER);
-      //   fpOptions.getChildren().add(btnOptions);
+         fpClientName.getChildren().add(tfClientName);
       
       // Color Select
       VBox vbColorSelect = new VBox(3);
@@ -147,28 +178,45 @@ public class TitleScreen
          fpColorSelect.getChildren().addAll(btnPrev, tfColorSelect, btnNext);
       vbColorSelect.getChildren().addAll(fpColorSelectLabel, fpColorSelect);
       
-      // Exit
+      // Exit button
       FlowPane fpExit = new FlowPane();
          fpExit.setAlignment(Pos.CENTER);
          fpExit.getChildren().add(btnExit);
       
       // Set on action
-      btnTest.setOnAction(ae);
       btnStart.setOnAction(ae);
       btnSaveConfig.setOnAction(ae);
+      btnResetConfig.setOnAction(ae);
       btnPrev.setOnAction(ae);
       btnNext.setOnAction(ae);
-      btnOptions.setOnAction(ae);
       btnExit.setOnAction(ae);
       
+      // Make 'waiting for players' message invisible
       lblWaitingForPlayers.setVisible(false);
       
-      // Root
+      // Root pane
       root = new VBox(20);
       root.setAlignment(Pos.CENTER);
-      root.getChildren().addAll(fpLabel, lblWaitingForPlayers, /*fpTest,*/ fpStart, fpSaveConfig, fpServerIp, fpServerPassword, fpClientName, /*fpOptions,*/ vbColorSelect, fpExit);
+      root.getChildren().addAll(fpLabel, lblWaitingForPlayers, /*fpTest,*/ fpStart, fpConfig, fpServerIp, fpServerPassword, fpClientName, /*fpOptions,*/ vbColorSelect, fpExit);
       
       // Scene
       titleScreen = new Scene(root, screenWidth, screenHeight);
+   }
+   
+   /** 
+   * Disables all of the interactive elements on the scene while game client is connecting/connected to the game server
+   *
+   * @param _switch disable state of interactive elements
+   */
+   public static void disableInterface(boolean _switch)
+   {
+      btnSaveConfig.setDisable(_switch);
+      btnResetConfig.setDisable(_switch);
+      tfServerIp.setDisable(_switch);
+      tfServerPassword.setDisable(_switch);
+      tfClientName.setDisable(_switch);
+      btnPrev.setDisable(_switch);
+      btnNext.setDisable(_switch);
+      btnExit.setDisable(_switch);
    }
 }

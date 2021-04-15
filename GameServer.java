@@ -20,61 +20,99 @@ import java.net.*;
 
 /**
 *  @author Artem Polkovnikov
-*  @version 02.04.2021
+*  @version 14.04.2021
 */
 
+/** Game server class that is responsible for all the game's server side functonality*/
 public class GameServer extends Application implements EventHandler<ActionEvent>
 {
    // Attributes
+   
    // Stage
+   /** Main stage*/
    private Stage stage;
    
    // Window proportions
       // Track (16/9)
+   /** Main window width*/
    private static final double WINDOW_WIDTH = 300;
+   /** Main window height*/
    private static final double WINDOW_HEIGHT = 400;
    
    // Layout
       // Main
+   /** Main scene*/
    private Scene mainScene = null;
+   /** Main scene root pane*/
    private VBox root = new VBox(5);
-      // Server address
+         // Server address
+   /** Top line pane*/
    private FlowPane fpTop = new FlowPane(5,5);
+   /** Game password pane*/
    private FlowPane fpServerPassword = new FlowPane(5,5);
-   //private Label lblServerIp = new Label("Server IP: ");
+   /** Server IP text field*/
    private TextField tfServerIp = new TextField();
+   /** Game password text field*/
    private TextField tfServerPassword = new TextField();
+   /** Server IP*/
    private String serverIp = null;
+   /** Game password*/
    private String serverPassword = null;
-      // Game settings
+         // Game settings
+   /** Game settings pane*/
    private VBox vbSettings = new VBox(5);
-         // Number of Players
+            // Number of Players
+   /** Number of players label*/
    private Label lblNumOfPlayers = new Label("Number of Players: ");
+   /** Number of players combo box*/
    private ComboBox<Integer> cbNumOfPlayers = new ComboBox<Integer>();
+   /** Possible numbers of players array*/
    private int[] playerNums = {2, 3, 4};
-         // Number of Laps
+            // Number of Laps
+   /** Number of laps label*/
    private Label lblNumOfLaps = new Label("Number of Laps: ");
+   /** Number of laps text field*/
    private TextField tfNumOfLaps = new TextField();
-      // StartGame
+         // StartGame
+   /** Start game pane*/
    private FlowPane fpStartGame = new FlowPane(5,5);
+   /** Start game button*/
    private Button btnStartGame = new Button("Start Game");
-      // Log
+         // Log
+   /** Server log*/
    private TextArea taLog = new TextArea();
    
    // Synchronization
+   /** clientThreads ArrayList synchronization object*/
    private Object clientThreadsLock = new Object();
    
    // Game
+      // General game attributes
+   /** Game status boolean*/
+   private boolean gameRunning = true;
+   /** Number of players*/
    private int numOfPlayers;
+   /** Player ID*/
    private int playerNum = 1;
+   /** Number of laps*/
    private int numOfLaps;
-   
+         // Config
+   /** Game configuration file locaiton*/
+   private static final String CONFIG_FILE = "game-configuration.xml";
+      // Clients
+   /** Array of client objects*/
+   private Client[] clients = null;
+   /** ArrayList of client threads*/
+   private ArrayList<ClientThread> clientThreads = new ArrayList<ClientThread>();
+      // Starting position coordinates
+   /** Starting position X coordinate*/
    private double[] startX = {130, 180, 130, 180};
+   /** Starting position Y coordinate*/
    private double[] startY = {520, 450, 380, 310};
+   /** Starting position rotation in degrees*/
    private double startDegree = 180;
-   
-   
-      // Check points
+      // Checkpoints
+   /** Checkpoints locaiton array*/
    private CheckPoint[] checkPointArray = 
       {new CheckPoint(220, 820, 220, 678), 
        new CheckPoint(435, 700, 435, 555), 
@@ -86,19 +124,15 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
        new CheckPoint(577, 315, 577, 455), 
        new CheckPoint(225, 245, 150, 140), 
        new CheckPoint(85, 620, 205, 620)};
+   /** Checkpoint location ArrayList*/
    private ArrayList<CheckPoint> checkPoints = new ArrayList<CheckPoint>();
    
-   private boolean gameRunning = true;
-   
    // Networking
-      // Port
-   private static final int SERVER_PORT = 42069;
-      // Server Socket
+      // Socket
+   /** Server port*/
+   private int serverPort = 42069;
+   /** Server socket*/
    private ServerSocket serverSocket = null;
-   
-   /** Array of client objects*/
-   private Client[] clients = null;
-   private ArrayList<ClientThread> clientThreads = new ArrayList<ClientThread>();
    
    /** Sets up the stage and GUI*/
    public void start(Stage _stage)
@@ -121,7 +155,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          }
       });
       
-      // VARIABLES
+      // Check points ArrayList set up
       Collections.addAll(checkPoints, checkPointArray);
       
       // Top line
@@ -181,6 +215,19 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
       // setOnAction
       btnStartGame.setOnAction(this);
       
+      // Create and/or read config
+      XMLSettings xmlWorker = new XMLSettings(CONFIG_FILE);
+      File configFile = new File(CONFIG_FILE);
+      if(!configFile.exists())
+      {
+         xmlWorker.writeXML();
+      }
+      xmlWorker.readXML();
+      
+      this.serverPort = xmlWorker.serverPort;
+      
+      
+      // Show stage
       mainScene = new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT);
       stage.setScene(mainScene);
       stage.setResizable(false);
@@ -198,6 +245,8 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             if(tfServerPassword.getText().length() <= 20)
             {
                tfServerPassword.setDisable(true);
+               tfNumOfLaps.setDisable(true);
+               cbNumOfPlayers.setDisable(true);
                serverPassword = tfServerPassword.getText();
                startGame();
             }
@@ -209,19 +258,22 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
       }
    }
    
+   /** Checks if all of the filled in game information is correct. If the game information is correct, starts the game server*/
    public void startGame()
    {
+      // If information is incorrect
       if(cbNumOfPlayers.getValue() == null ||
          tfNumOfLaps.getText().length() < 1)
       {
          DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting game", "One or multiple game settings are incorrect");
          tfServerPassword.setDisable(false);
+         tfNumOfLaps.setDisable(false);
+         cbNumOfPlayers.setDisable(false);
       }
-      else
+      else // If information is correct
       {
          numOfPlayers = cbNumOfPlayers.getValue();
          String tempLaps = tfNumOfLaps.getText();
-         //taLog.appendText("Creating client array " + numOfPlayers + "\n");
          clients = new Client[numOfPlayers];
          
          boolean isANumber = false;
@@ -235,31 +287,40 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          {
             DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting game", "The value in the \"Number of Laps\" field is not a number.");
             tfServerPassword.setDisable(false);
+            tfNumOfLaps.setDisable(false);
+            cbNumOfPlayers.setDisable(false);
          }
          
+         // Check if num of laps is a number
          if(isANumber)
          {
             if(tempLapNum >= 2_147_483_647 || tempLapNum < 1)
             {
                DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting game", "The value in the \"Number of Laps\" field is either to high or too low.");
                tfServerPassword.setDisable(false);
+               tfNumOfLaps.setDisable(false);
+               cbNumOfPlayers.setDisable(false);
             }
             else
             {
+               // Set up lap number
                numOfLaps = tempLapNum;
+               // Disable start game button
                btnStartGame.setDisable(true);
+               // Start the server
                startServer();
             }
          }
       }
-   }
+   } // END startGame()
    
+   /** Claims the server socket and starts the server thread*/
    private void startServer()
    {
       try
       {
          // Claim server socket
-         serverSocket = new ServerSocket(SERVER_PORT);
+         serverSocket = new ServerSocket(serverPort);
          // Report starting
          taLog.appendText("Server socket claimed\n");
          
@@ -274,15 +335,20 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
       {
          DisplayMessage.showAlert(stage, AlertType.ERROR, "Error starting server", ioe + "");
       }
-      
-   }
+   } // END startServer()
    
+   /** Performs client initialization*/
    class ServerThread extends Thread
    {
       // Attributes
+      /** Server socket*/
       ServerSocket sSocket = null;
       
-      /* ServerThread constructor*/
+      /**
+      * Constructor
+      *
+      * @param _sSocket server socket
+      */
       public ServerThread(ServerSocket _sSocket)
       {
          this.sSocket = _sSocket;
@@ -347,19 +413,28 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             for(ClientThread cThread:clientThreads)
             {
                cThread.initializePlayer();
-               taLog.appendText("\n" + cThread.getClientName() + "#" + cThread.getClientNumber() + " joined\n");
+               Platform.runLater
+               (
+                  new Runnable()
+                  {
+                     public void run()
+                     {
+                        taLog.appendText("\n" + cThread.getClientName() + "#" + cThread.getClientNumber() + " joined\n");
+                     }
+                  }
+               );
             }
          }
-         taLog.appendText("\nPlayers initialized...");
-         
-//          System.out.println("\nClient list after initialization of players\n");
-//          for(Client c:clients)
-//          {
-//             System.out.println(c);
-//          }
-//          System.out.println("\n");
-         
-//         System.out.println("\nOpponent initialization\n");
+         Platform.runLater
+         (
+            new Runnable()
+            {
+               public void run()
+               {
+                  taLog.appendText("\nPlayers initialized...");
+               }
+            }
+         );
          
          // Initialize Opponents
          synchronized(clientThreadsLock)
@@ -369,8 +444,16 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                cThread.initializeOpponents();
             }
          }
-         taLog.appendText("\nOpponents initialized...");
-//         System.out.println("\n");
+         Platform.runLater
+         (
+            new Runnable()
+            {
+               public void run()
+               {
+                  taLog.appendText("\nOpponents initialized...");
+               }
+            }
+         );
          
          // Start client threads for listening
          synchronized(clientThreadsLock)
@@ -380,7 +463,16 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                cThread.start();
             }
          }
-         taLog.appendText("\nClient threads started...");
+         Platform.runLater
+         (
+            new Runnable()
+            {
+               public void run()
+               {
+                  taLog.appendText("\nClient threads started...");
+               }
+            }
+         );
          
          // Start Game
          synchronized(clientThreadsLock)
@@ -391,39 +483,83 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                co.start();
             }
          }
-         taLog.appendText("\nSTART_GAME sent...");         
+         Platform.runLater
+         (
+            new Runnable()
+            {
+               public void run()
+               {
+                  taLog.appendText("\nSTART_GAME sent...");
+               }
+            }
+         );        
       } // run()
-   } // Server Thread
+   } // END ServerThread
    
+   /** Performs all of the server to client communications*/
    class ClientThread extends Thread
    {
       // Attributes
          // General
+      /** Client socket*/
       private Socket cSocket = null;
+      /** Client ID*/
       private int clientNumber;
+      /** Client nickname*/
       private String clientName;
+      /** Error boolean that stop client from working if an error occurs*/
       private boolean error = false;
          // Client Server Communication
+      /** Client ObjectOutputStream*/
       private ObjectOutputStream oos = null;
+      /** Client ObjectInputStream*/
       private ObjectInputStream ois = null;
       
-      public ObjectOutputStream getOos() {return this.oos;}
-      
       // Synchronization
+      /** ObjectInputStream synchronization object*/
       private Object oisLock = new Object();
+      /** ObjectOutputStream synchronization object*/
       private Object oosLock = new Object();
+      /** General synchronization object*/
       private Object lock = new Object();
       
       // GamePlay
+      /** Number of the current checkpoint*/
       private int currentCheckPoint = 0;
+      /** Number of the current lap*/
       private int currentLap = 1;
+      /** Client's car X coordinate in the frame previous to the location update*/
       private double prevX = 0;
+      /** Client's car Y coordinate in the frame previous to the location update*/
       private double prevY = 0;
       
+      /** 
+      * Returns client's ObjectOutputStream
+      *
+      * @return client's ObjectOutputStream
+      */
+      public ObjectOutputStream getOos() {return this.oos;}
+      /** 
+      * Returns client's ID
+      *
+      * @return client's ID
+      */
       public int getClientNumber() {return this.clientNumber;}
+      /**
+      * Returns client's nickname
+      *
+      * @return client's nickname
+      */
       public String getClientName() {return this.clientName;}
       
-      /** ClientThread constructor*/
+      /** 
+      * Constructor
+      *
+      * @param _cSocket client socket
+      * @param _oos client's ObjectOutputStream
+      * @param _ois client's ObjectInputStream
+      * @param _clientNumber client's ID
+      */
       public ClientThread(Socket _cSocket, ObjectOutputStream _oos, ObjectInputStream _ois, int _clientNumber)
       {
          this.cSocket = _cSocket;
@@ -446,7 +582,6 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
             }
             catch(SocketException se)
             {
-               //DisplayMessage.showAlert(stage, AlertType.ERROR, "ClienThread: Error receiving command", se + "");
                error = true; 
             }
             catch(ClassNotFoundException cnfe)
@@ -466,7 +601,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                
                switch(command)
                {
-                  case "UPDATE_COORDINATES":
+                  case "UPDATE_COORDINATES": // Update client's car coordinates
                      CoordinateSet cs = null;
                      synchronized(lock)
                      {
@@ -515,7 +650,18 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                                     if(currentLap > numOfLaps && gameRunning)
                                     {
                                        gameRunning = false;
-                                       taLog.appendText("\n\nGame Over\n" + clientName + "#" + clientNumber + " won the race!");
+                                       
+                                       Platform.runLater
+                                       (
+                                          new Runnable()
+                                          {
+                                             public void run()
+                                             {
+                                                taLog.appendText("\n\nGame Over\n" + clientName + "#" + clientNumber + " won the race!");
+                                             }
+                                          }
+                                       );
+                                       
                                        for(ClientThread ct:clientThreads)
                                        {
                                           ct.stopGame(clientNumber);
@@ -547,7 +693,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                         }
                      }
                      break; // UPDATE_COORDINATES
-                  case "CHAT_MESSAGE":
+                  case "CHAT_MESSAGE": // Receive public chat message
                      int clientNumber = 0;
                      String message = null;
                      
@@ -581,7 +727,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                         }
                      }
                      break; // CHAT_MESSAGE
-                  case "PRIVATE_CHAT_MESSAGE":
+                  case "PRIVATE_CHAT_MESSAGE": // Receive private chat message
                      int senderNumber = 0;
                      int recepientNumber = 0;
                      String privateMessage = null;
@@ -623,6 +769,7 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          
          if(error)
          {
+            // Send disconnection message to all other clients
             synchronized(clientThreadsLock)
             {
                for(ClientThread ct:clientThreads)
@@ -630,11 +777,11 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                   if(ct.getClientNumber() != this.getClientNumber())
                   {
                      ct.disconnectOpponent(this.getClientNumber());
-                     //System.out.println("Sent Player" + ct.getClientNumber() + " opponent disconnection request.");
                   }
                }
             }
             
+            // Remove client from the clientThreads arrayList
             synchronized(clientThreadsLock)
             {
                for(ClientThread ct:clientThreads)
@@ -642,12 +789,12 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                   if(ct.getClientNumber() == clientNumber)
                   {
                      clientThreads.remove(ct);
-                     //System.out.println("Removed client" + ct.getClientNumber());
                      break;
                   }
                }
             }
             
+            // Close streams
             try
             {
                this.oos.close();
@@ -659,12 +806,20 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                error = true;
             }
             
-            taLog.appendText("\n\n" + clientName + "#" + clientNumber + " disconnected.");
+            Platform.runLater
+            (
+               new Runnable()
+               {
+                  public void run()
+                  {
+                     taLog.appendText("\n\n" + clientName + "#" + clientNumber + " disconnected.");
+                  }
+               }
+            );
             
             // if all clients disconnected stop the server
             if(clientThreads.size() == 0)
             {
-               //DisplayMessage.showAlert(stage, AlertType.INFORMATION, "All players left the game", "Stopping the server");
                System.exit(0);
             }
          } // if(error)   
@@ -676,31 +831,34 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          try
          {
             oos.writeObject("INIT_PLAYER");
+            // SEND client ID
             oos.writeObject(this.clientNumber);
+            // SEND number of laps
             oos.writeObject(numOfLaps);
             
+            // RECEIVE car file name
             String carFileName = (String)ois.readObject();
             this.clientName = (String)ois.readObject();
             
-            
+            // Set up client object
             Client c = new Client(this.cSocket, this.oos, this.ois, this.clientNumber, this.clientName);
+               c.setCarFileName(carFileName);
+               c.setStartX(startX[clientNumber-1]);
+               prevX = c.getStartX();
+               c.setStartY(startY[clientNumber-1]);
+               prevY = c.getStartY();
+               c.setStartDegree(startDegree);
             
-            c.setCarFileName(carFileName);
-            c.setStartX(startX[clientNumber-1]);
-            prevX = c.getStartX();
-            c.setStartY(startY[clientNumber-1]);
-            prevY = c.getStartY();
-            c.setStartDegree(startDegree);
-            
+            // SEND starting position
             oos.writeObject(c.getStartX());
             oos.writeObject(c.getStartY());
             oos.writeObject(c.getStartDegree());
             
-            //System.out.println(c);
-            clients[clientNumber-1] = c;
-            //System.out.println("Within array: " + clients[clientNumber-1]);
-         
+            // SEND Checkpoints
             oos.writeObject(checkPointArray);
+            
+            // Client object to the clients array
+            clients[clientNumber-1] = c;
          }
          catch(ClassNotFoundException cnfe)
          {
@@ -728,21 +886,21 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
                                              c.getStartX(),
                                              c.getStartY(),
                                              c.getStartDegree());
-                  //System.out.println("Client" + this.clientNumber + " INIT_OPPONENT: " + c);
                   oos.writeObject(op);
                }
             }
          }
-         // catch(ClassNotFoundException cnfe)
-         // {
-         //    DisplayMessage.showAlert(stage, AlertType.ERROR, "initializePlayer() CNFE", cnfe + "");
-         // }
          catch(IOException ioe)
          {
             DisplayMessage.showAlert(stage, AlertType.ERROR, "initializePlayer() IOE", ioe + "");
          }
       } // initializeOpponents()
       
+      /**
+      * Sends opponent's car coordinates to the server
+      *
+      * @param _cs coordinate set with the opponent's car coordinates
+      */
       public void updateOpponent(CoordinateSet _cs)
       {
          synchronized(lock)
@@ -759,6 +917,12 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          }
       }
       
+      /**
+      * Sends a public chat message to the client
+      *
+      * @param _clientNumber sender's ID
+      * @param _message public chat message
+      */
       public void receiveChatMessage(int _clientNumber, String _message)
       {
          synchronized(lock)
@@ -776,6 +940,12 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          }
       }
       
+      /**
+      * Sends private chat message to the client
+      *
+      * @param _senderNumber sender ID
+      * @param _message private chat message
+      */
       public void receivePrivateChatMessage(int _senderNumber, String _message)
       {
          synchronized(lock)
@@ -793,6 +963,11 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          }
       }
       
+      /**
+      * Sends an opponent disconnection message to the client
+      *
+      * @param _opponentNumber ID of the disconnected opponent
+      */
       public void disconnectOpponent(int _opponentNumber)
       {
          synchronized(lock)
@@ -809,6 +984,11 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
          }
       }
       
+      /**
+      * Sends a stop game message to the client
+      *
+      * @param _winnerNumber ID of the client who won the race
+      */
       public void stopGame(int _winnerNumber)
       {
          synchronized(lock)
@@ -827,12 +1007,21 @@ public class GameServer extends Application implements EventHandler<ActionEvent>
       
    } // ClientThread
    
+   /** Sends an object to the client*/
    class ClientOutput extends Thread
    {
       // Attributes
+      /** Client's ObjectOutputStream*/
       private ObjectOutputStream oos = null;
+      /** Object that needs to be sent to the client*/
       private Object objectToSend = null;
       
+      /**
+      * Constructor
+      *
+      * @param _oos client's ObjectOutputStream
+      * @param _objectToSend object that needs to be sent to the client
+      */
       public ClientOutput(ObjectOutputStream _oos, Object _objectToSend)
       {
          this.oos = _oos;
