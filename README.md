@@ -1,4 +1,5 @@
 # Java-Racer-Online
+Author - Artem Polkovnikov
 
 A multiplayer racing game built with Java and JavaFX.
 
